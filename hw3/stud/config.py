@@ -29,13 +29,13 @@ LR = 3e-5
 SEED = 42
 
 
-
-
-
-
 relation2Id = parseRelation2Id(RELATION2ID_PATH)
 rel2pred = parseRel2Pred(REL2PRED_PATH)
 id2relation = {v:k for k,v in relation2Id.items()}
 # rel_abrv = " ".join([rel.split('/')[-1] for rel in list(relation2Id.keys())])
 REL_NUM = len(relation2Id)
 REL_IDS_NUM = 51
+
+
+
+TABLE_SIZE = (MAX_LEN + REL_NUM)**2

@@ -38,6 +38,8 @@ class UniRE(pl.LightningModule):
         input_ids, attention_mask, token_type_ids, labels = batch
 
         h_logits, t_logits, span_logits = self(input_ids, attention_mask, token_type_ids)
+        
+        # h_logits = h_logits[attention_mask == 1]
 
         h_loss = self.loss(h_logits.float().view(-1), labels["head_matrices"].view(-1).float())
         t_loss = self.loss(t_logits.float().view(-1), labels["tail_matrices"].view(-1).float())
@@ -53,11 +55,25 @@ class UniRE(pl.LightningModule):
         t_correct = (t_pred == labels["tail_matrices"]).sum().item()
         span_correct = (span_pred == labels["span_matrices"]).sum().item()
 
-        h_acc = h_correct / (config.MAX_LEN * config.MAX_LEN)
-        t_acc = t_correct / (config.MAX_LEN * config.MAX_LEN)
-        span_acc = span_correct / (config.MAX_LEN * config.MAX_LEN)
 
-        print(f"Train Loss: {loss}, H Acc: {h_acc}, T Acc: {t_acc}, Span Acc: {span_acc}")
+        h_wrong = (h_pred != labels["head_matrices"]).sum().item()
+        t_wrong = (t_pred != labels["tail_matrices"]).sum().item()
+        span_wrong = (span_pred != labels["span_matrices"]).sum().item()
+
+        h_acc = h_correct / (labels["head_matrices"].shape[1]**2 * config.BATCH_SIZE)
+        t_acc = t_correct / (labels["head_matrices"].shape[1]**2 * config.BATCH_SIZE)
+        span_acc = span_correct / (labels["head_matrices"].shape[1]**2 * config.BATCH_SIZE)
+
+        # print(f"Train Loss: {loss}, H Acc: {h_acc}, T Acc: {t_acc}, Span Acc: {span_acc}")
+
+        self.log("train_loss", loss, prog_bar = True)
+        self.log("train_h_acc", h_acc, prog_bar = True)
+        self.log("train_t_acc", t_acc, prog_bar = True)
+        self.log("train_span_acc", span_acc, prog_bar = True)
+        self.log("h_correct", h_correct, prog_bar = True)
+        self.log("h_wrong", h_wrong, prog_bar = True)
+        self.log("attention_mask_sum", attention_mask.sum().item(), prog_bar = True)
+        
 
         return {
             "loss": loss,
@@ -88,12 +104,15 @@ class UniRE(pl.LightningModule):
         t_correct = (t_pred == labels["tail_matrices"]).sum().item()
         span_correct = (span_pred == labels["span_matrices"]).sum().item()
 
-        h_acc = h_correct / (config.MAX_LEN * config.MAX_LEN)
-        t_acc = t_correct / (config.MAX_LEN * config.MAX_LEN)
-        span_acc = span_correct / (config.MAX_LEN * config.MAX_LEN)
+        h_acc = h_correct / (config.TABLE_SIZE)
+        t_acc = t_correct / (config.TABLE_SIZE)
+        span_acc = span_correct / (config.TABLE_SIZE)
 
-        print(f"Val Loss: {loss}, H Acc: {h_acc}, T Acc: {t_acc}, Span Acc: {span_acc}")
-
+        # print(f"Val Loss: {loss}, H Acc: {h_acc}, T Acc: {t_acc}, Span Acc: {span_acc}")
+        self.log("val_loss", loss, prog_bar = True)
+        self.log("val_h_acc", h_acc, prog_bar = True)
+        self.log("val_t_acc", t_acc, prog_bar = True)
+        self.log("val_span_acc", span_acc, prog_bar = True)
         return {
             "loss": loss,
             "h_acc": h_acc,
@@ -106,6 +125,3 @@ class UniRE(pl.LightningModule):
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=config.LR)
-
-    def training_epoch_end(self, outputs):
-        pass
