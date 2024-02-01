@@ -72,9 +72,9 @@ class RelationDataset(Dataset):
         with open(self.data_path, 'r') as f:
             l = 0
             for line in f:
-                # if l == 100:
-                #     break
-                # l+=1
+                if l == 10:
+                    break
+                l+=1
                 data = json.loads(line)
                 self.tokens.append(data['tokens'])
                 # for relation in data["relations"]:
@@ -88,7 +88,7 @@ class RelationDataset(Dataset):
 
     def __getitem__(self, idx):
         tokens = self.tokens[idx]
-        inputs = self.tokenizer.encode_plus(tokens, max_length=config.MAX_LEN, truncation=True, padding='max_length')
+        inputs = self.tokenizer(" ".join(tokens), max_length=config.MAX_LEN, truncation=True, padding='max_length')
         sep_idx = inputs["input_ids"].index(self.tokenizer.sep_token_id)
         
         input_ids = inputs["input_ids"] + self.encoded_preds['input_ids'] 
@@ -98,6 +98,8 @@ class RelationDataset(Dataset):
         attention_mask[sep_idx] = 0
 
         token_type_ids = inputs["token_type_ids"] + [1] * config.REL_NUM#len(self.encoded_preds["input_ids"])
+
+        position_ids = inputs.word_ids()
 
         input_ids = torch.tensor(input_ids)
         attention_mask = torch.tensor(attention_mask)
@@ -117,7 +119,7 @@ class RelationDataset(Dataset):
         #     # "labels": label
         #     "relations": self.relations[idx],
         # }
-        return input_ids, attention_mask, token_type_ids, self.relations[idx]
+        return input_ids, attention_mask, token_type_ids, position_ids, self.relations[idx]
 
 
 def parseRelation2Id(data_path):
