@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 from transformers import AutoModel
 from modify_bert import BertModel
+from metrics import compute_metrics
 
 
 import config
@@ -65,14 +66,19 @@ class UniRE(pl.LightningModule):
         span_acc = span_correct / (labels["head_matrices"].shape[1]**2 * config.BATCH_SIZE)
 
         # print(f"Train Loss: {loss}, H Acc: {h_acc}, T Acc: {t_acc}, Span Acc: {span_acc}")
+        acc, prec, rec, f1 = compute_metrics(input_ids, h_pred, t_pred, span_pred, labels)
 
         self.log("train_loss", loss, prog_bar = True)
-        self.log("train_h_acc", h_acc, prog_bar = True)
-        self.log("train_t_acc", t_acc, prog_bar = True)
-        self.log("train_span_acc", span_acc, prog_bar = True)
-        self.log("h_correct", h_correct, prog_bar = True)
-        self.log("h_wrong", h_wrong, prog_bar = True)
-        self.log("attention_mask_sum", attention_mask.sum().item(), prog_bar = True)
+        self.log("accuracy", acc, prog_bar = True)
+        self.log("precision", prec, prog_bar = True)
+        self.log("recall", rec, prog_bar = True)
+        self.log("f1_score", f1, prog_bar = True)
+        # self.log("train_h_acc", h_acc, prog_bar = True)
+        # self.log("train_t_acc", t_acc, prog_bar = True)
+        # self.log("train_span_acc", span_acc, prog_bar = True)
+        # self.log("h_correct", h_correct, prog_bar = True)
+        # self.log("h_wrong", h_wrong, prog_bar = True)
+        # self.log("attention_mask_sum", attention_mask.sum().item(), prog_bar = True)
         
 
         return {

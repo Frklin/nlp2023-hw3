@@ -23,7 +23,7 @@ PRETRAINED_MODEL = 'bert-base-uncased'
 MAX_LEN = 150
 BATCH_SIZE = 8
 EPOCHs = 10
-THRESHOLD = 0.5
+THRESHOLD = 0.2
 LR = 3e-5
 
 SEED = 42
@@ -35,7 +35,7 @@ id2relation = {v:k for k,v in relation2Id.items()}
 # rel_abrv = " ".join([rel.split('/')[-1] for rel in list(relation2Id.keys())])
 REL_NUM = len(relation2Id)
 REL_IDS_NUM = 51
-
+index_shift = []
 
 
 TABLE_SIZE = (MAX_LEN + REL_NUM)**2
