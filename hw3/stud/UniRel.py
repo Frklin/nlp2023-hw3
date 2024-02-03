@@ -4,6 +4,7 @@ import torch.nn as nn
 from transformers import AutoModel
 from modify_bert import BertModel
 from metrics import compute_metrics
+from utils import reconstruct_relations_from_matrices
 
 
 import config
@@ -22,6 +23,11 @@ class UniRE(pl.LightningModule):
 
         self.loss = nn.BCELoss()
 
+        self.train_labels = []
+        self.train_preds = []
+        self.val_labels = []
+        self.val_preds = []
+
 
     def forward(self, input_ids, attention_mask, token_type_ids):
         
@@ -36,7 +42,7 @@ class UniRE(pl.LightningModule):
         return h_logits, t_logits, span_logits
 
     def training_step(self, batch, batch_idx):
-        input_ids, attention_mask, token_type_ids, labels = batch
+        indices, input_ids, attention_mask, token_type_ids, labels = batch
 
         h_logits, t_logits, span_logits = self(input_ids, attention_mask, token_type_ids)
         
@@ -52,27 +58,25 @@ class UniRE(pl.LightningModule):
         t_pred = t_logits > config.THRESHOLD
         span_pred = span_logits > config.THRESHOLD
 
-        h_correct = (h_pred == labels["head_matrices"]).sum().item()
-        t_correct = (t_pred == labels["tail_matrices"]).sum().item()
-        span_correct = (span_pred == labels["span_matrices"]).sum().item()
+        # reconstruct prediction
+        preds = reconstruct_relations_from_matrices(h_pred, t_pred, span_pred)
+
+        # h_correct = (h_pred == labels["head_matrices"]).sum().item()
+        # t_correct = (t_pred == labels["tail_matrices"]).sum().item()
+        # span_correct = (span_pred == labels["span_matrices"]).sum().item()
 
 
-        h_wrong = (h_pred != labels["head_matrices"]).sum().item()
-        t_wrong = (t_pred != labels["tail_matrices"]).sum().item()
-        span_wrong = (span_pred != labels["span_matrices"]).sum().item()
+        # h_wrong = (h_pred != labels["head_matrices"]).sum().item()
+        # t_wrong = (t_pred != labels["tail_matrices"]).sum().item()
+        # span_wrong = (span_pred != labels["span_matrices"]).sum().item()
 
-        h_acc = h_correct / (labels["head_matrices"].shape[1]**2 * config.BATCH_SIZE)
-        t_acc = t_correct / (labels["head_matrices"].shape[1]**2 * config.BATCH_SIZE)
-        span_acc = span_correct / (labels["head_matrices"].shape[1]**2 * config.BATCH_SIZE)
-
-        # print(f"Train Loss: {loss}, H Acc: {h_acc}, T Acc: {t_acc}, Span Acc: {span_acc}")
-        acc, prec, rec, f1 = compute_metrics(input_ids, h_pred, t_pred, span_pred, labels)
+        # acc, prec, rec, f1 = compute_metrics(input_ids, h_pred, t_pred, span_pred, labels)
 
         self.log("train_loss", loss, prog_bar = True)
-        self.log("accuracy", acc, prog_bar = True)
-        self.log("precision", prec, prog_bar = True)
-        self.log("recall", rec, prog_bar = True)
-        self.log("f1_score", f1, prog_bar = True)
+        # self.log("accuracy", acc, prog_bar = True)
+        # self.log("precision", prec, prog_bar = True)
+        # self.log("recall", rec, prog_bar = True)
+        # self.log("f1_score", f1, prog_bar = True)
         # self.log("train_h_acc", h_acc, prog_bar = True)
         # self.log("train_t_acc", t_acc, prog_bar = True)
         # self.log("train_span_acc", span_acc, prog_bar = True)
@@ -83,16 +87,15 @@ class UniRE(pl.LightningModule):
 
         return {
             "loss": loss,
-            "h_acc": h_acc,
-            "t_acc": t_acc,
-            "span_acc": span_acc
+            "preds": preds,
+            "labels": labels["spo"]
         }
 
 
 
 
     def validation_step(self, batch, batch_idx):
-        input_ids, attention_mask, token_type_ids, labels = batch
+        indices, input_ids, attention_mask, token_type_ids, labels = batch
 
         h_logits, t_logits, span_logits = self(input_ids, attention_mask, token_type_ids)
 
@@ -106,28 +109,61 @@ class UniRE(pl.LightningModule):
         t_pred = t_logits > config.THRESHOLD
         span_pred = span_logits > config.THRESHOLD
 
-        h_correct = (h_pred == labels["head_matrices"]).sum().item()
-        t_correct = (t_pred == labels["tail_matrices"]).sum().item()
-        span_correct = (span_pred == labels["span_matrices"]).sum().item()
-
-        h_acc = h_correct / (config.TABLE_SIZE)
-        t_acc = t_correct / (config.TABLE_SIZE)
-        span_acc = span_correct / (config.TABLE_SIZE)
-
-        # print(f"Val Loss: {loss}, H Acc: {h_acc}, T Acc: {t_acc}, Span Acc: {span_acc}")
+        preds = reconstruct_relations_from_matrices(h_pred, t_pred, span_pred)
+       
         self.log("val_loss", loss, prog_bar = True)
-        self.log("val_h_acc", h_acc, prog_bar = True)
-        self.log("val_t_acc", t_acc, prog_bar = True)
-        self.log("val_span_acc", span_acc, prog_bar = True)
+
         return {
             "loss": loss,
-            "h_acc": h_acc,
-            "t_acc": t_acc,
-            "span_acc": span_acc
+            "preds": preds,
+            "labels": labels["spo"]
         }
     
+
+
     def test_step(self, batch, batch_idx):
         pass
+
+    def training_epoch_end(self, outputs):
+        preds = []
+        labels = []
+        losses = []
+
+        for output in outputs:
+            preds.append(output["preds"])
+            labels.append(output["labels"])
+            losses.append(output["loss"])
+
+        acc, prec, rec, f1 = compute_metrics(preds, labels)
+
+        loss = torch.stack(losses).mean()
+
+        print(f"Epoch {self.current_epoch} (TRAIN): Loss: {loss}, train accuracy: {acc}, precision: {prec}, recall: {rec}, f1_score: {f1}")
+        self.log("train_accuracy", acc)
+        self.log("train_precision", prec)
+        self.log("train_recall", rec)
+        self.log("train_f1_score", f1)
+
+
+    def validation_epoch_end(self, outputs):
+        preds = []
+        labels = []
+        losses = []
+
+        for output in outputs:
+            preds.append(output["preds"])
+            labels.append(output["labels"])
+
+        acc, prec, rec, f1 = compute_metrics(preds, labels)
+
+        loss = torch.stack(losses).mean()
+
+        print(f"Epoch {self.current_epoch} (VAL): Loss: {loss}, Val accuracy: {acc}, precision: {prec}, recall: {rec}, f1_score: {f1}")
+        self.log("val_accuracy", acc)
+        self.log("val_precision", prec)
+        self.log("val_recall", rec)
+        self.log("val_f1_score", f1)
+
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=config.LR)
