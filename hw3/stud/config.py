@@ -9,7 +9,7 @@ from load import parseRelation2Id, parseRel2Pred
 
 
 # PATHS
-DATA_PATH = '../../data'
+DATA_PATH = 'data'
 TRAIN_PATH = os.path.join(DATA_PATH, 'train.jsonl')
 DEV_PATH = os.path.join(DATA_PATH, 'dev.jsonl')
 TEST_PATH = os.path.join(DATA_PATH, 'test.jsonl')
@@ -20,10 +20,10 @@ REL2PRED_PATH = os.path.join(DATA_PATH, 'rel2pred.json')
 
 
 PRETRAINED_MODEL = 'bert-base-uncased'
-MAX_LEN = 150
-BATCH_SIZE = 2
+MAX_LEN = 180
+BATCH_SIZE = 32
 EPOCHs = 10
-THRESHOLD = 0.2
+THRESHOLD = 0.5
 LR = 3e-5
 
 SEED = 42

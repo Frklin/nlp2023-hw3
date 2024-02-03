@@ -162,14 +162,27 @@ def get_label_matrices(labels, relation, position_ids):
 
 
 
-def reconstruct_relations_from_matrices(head_matrices, tail_matrices, span_matrices):
-
+def reconstruct_relations_from_matrices(head_matrices, tail_matrices, span_matrices, labels=None):
+    """
+    head_matrices: torch.Tensor, shape (batch_size, max_len + rel_num, max_len + rel_num)
+    """
     relations = []
 
     for i in range(head_matrices.shape[0]):
+        # with open("h_pred.txt", "a") as f:
+        #     f.write(str(head_matrices[i]))
+        # with open("t_pred.txt", "a") as f:
+        #     f.write(str(tail_matrices[i]))
+        # with open("span_pred.txt", "a") as f:
+        #     f.write(str(span_matrices[i]))
+        if head_matrices[i].sum() == 0 or tail_matrices[i].sum() == 0 or span_matrices[i].sum() == 0:
+            relations.append([])
+            continue
         rel = matrices2relations(head_matrices[i], tail_matrices[i], span_matrices[i])
         if rel:
             relations.append(rel)
+        else:
+            relations.append([])
 
     return relations
 

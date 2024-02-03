@@ -1,4 +1,5 @@
 {
+    "no_relation": "none",
     "/business/company/founders": "founders",
     "/people/person/place_of_birth": "birthplace",
     "/people/deceased_person/place_of_death": "death",
@@ -9,7 +10,6 @@
     "/business/company/industry": "industry",
     "/business/company/place_founded": "founded",
     "/location/administrative_division/country": "country",
-    "no_relation": "none",
     "/sports/sports_team_location/teams": "teams",
     "/people/person/nationality": "nationality",
     "/people/person/religion": "religion",

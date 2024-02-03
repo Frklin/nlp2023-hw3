@@ -72,8 +72,8 @@ class RelationDataset(Dataset):
         with open(self.data_path, 'r') as f:
             l = 0
             for line in f:
-                # if l == 40:
-                #     break
+                if l == 100:
+                    break
                 l+=1
                 data = json.loads(line)
                 self.tokens.append(data['tokens'])
