@@ -33,7 +33,7 @@ if __name__ == '__main__':
                                             finetuning_task="UniRel")
     bert_config.num_rels = config.REL_NUM
 
-    model = UniRE(bert_config=bert_config)
+    model = UniRE(bert_config=bert_config) # this is the main model
 
 
     trainer = Trainer(gpus=1, max_epochs=100, callbacks=[ModelCheckpoint(monitor='val_loss')])#, logger=wandb_logger)
