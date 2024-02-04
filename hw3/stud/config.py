@@ -34,7 +34,6 @@ rel2pred = parseRel2Pred(REL2PRED_PATH)
 id2relation = {v:k for k,v in relation2Id.items()}
 # rel_abrv = " ".join([rel.split('/')[-1] for rel in list(relation2Id.keys())])
 REL_NUM = len(relation2Id)
-REL_IDS_NUM = 51
 index_shift = {}
 
 

@@ -4,6 +4,7 @@ import numpy as np
 import torch
 import config
 from dataclasses import dataclass
+import matplotlib.pyplot as plt
 
 
 
@@ -120,8 +121,8 @@ def get_label_matrices(labels, relation, position_ids):
         # Entity-Entity
         head_matrix[s_start, o_start] = 1
         head_matrix[o_start, s_start] = 1
-        tail_matrix[s_start, o_start] = 1
-        tail_matrix[o_start, s_start] = 1
+        tail_matrix[s_end, o_end] = 1
+        tail_matrix[o_end, s_end] = 1
         span_matrix[s_start, s_end] = 1
         span_matrix[s_end, s_start] = 1
         span_matrix[o_start, o_end] = 1
@@ -149,8 +150,15 @@ def get_label_matrices(labels, relation, position_ids):
         t2r.add((o_start, pred_shifted_idx))
 
         # spo_span.add(LabelFormat(Entity(s_start, s_end, s_text, "subject"), pred_idx, Entity(o_start, o_end, o_text, "object")))
-        spo_span.add(((s_start, s_end), pred_idx, (o_start, o_end)))
+        spo_span.add(((s_start, s_end), pred_shifted_idx, (o_start, o_end)))
     
+    head_ones_coordinates = [(i.item(), j.item()) for i, j in head_matrix.nonzero()]
+    tail_ones_coordinates = [(i.item(), j.item()) for i, j in tail_matrix.nonzero()]
+    span_ones_coordinates = [(i.item(), j.item()) for i, j in span_matrix.nonzero()]
+
+    # rel = matrices2relations(head_ones_coordinates, tail_ones_coordinates, span_ones_coordinates)
+    # assert len(set(rel).intersection(spo_span)) == len(spo_span), f"Matrices2Relations failed to reconstruct the original spo_span: {rel} != {spo_span}"
+
     labels["head_matrices"].append(head_matrix)
     labels["tail_matrices"].append(tail_matrix)
     labels["span_matrices"].append(span_matrix)
@@ -168,45 +176,108 @@ def reconstruct_relations_from_matrices(head_matrices, tail_matrices, span_matri
     """
     relations = []
 
-    for i in range(head_matrices.shape[0]):
-        # with open("h_pred.txt", "a") as f:
-        #     f.write(str(head_matrices[i]))
-        # with open("t_pred.txt", "a") as f:
-        #     f.write(str(tail_matrices[i]))
-        # with open("span_pred.txt", "a") as f:
-        #     f.write(str(span_matrices[i]))
-        if head_matrices[i].sum() == 0 or tail_matrices[i].sum() == 0 or span_matrices[i].sum() == 0:
+    for k in range(head_matrices.shape[0]):
+        if head_matrices[k].sum() == 0 or tail_matrices[k].sum() == 0 or span_matrices[k].sum() == 0:
             relations.append([])
             continue
-        rel = matrices2relations(head_matrices[i], tail_matrices[i], span_matrices[i])
-        if rel:
-            relations.append(rel)
-        else:
-            relations.append([])
+        tail_ones_coordinates = [(i.item(), j.item()) for i, j in tail_matrices[k].nonzero() if i.item() != 0 and j.item() != 0 and i.item() != j.item() and not(i.item() > config.MAX_LEN and j.item() > config.MAX_LEN)]
+        span_ones_coordinates = [(i.item(), j.item()) for i, j in span_matrices[k].nonzero() if i.item() != 0 and j.item() != 0 and i.item() != j.item() and not(i.item() > config.MAX_LEN and j.item() > config.MAX_LEN)]
+        head_ones_coordinates = [(i.item(), j.item()) for i, j in head_matrices[k].nonzero() if i.item() != 0 and j.item() != 0 and i.item() != j.item() and not(i.item() > config.MAX_LEN and j.item() > config.MAX_LEN)]
+
+        rel = matrices2relations(head_ones_coordinates, tail_ones_coordinates, span_ones_coordinates)
+
+        relations.append(rel)
 
     return relations
 
 
+def matrices2relations(head, tail, span):
+    # Convert to set for faster operations
+    head_set = set(head)
+    span_set = set(span)
+    tail_set = set(tail)
+    
+    # Step 1: Extract initial triples where relation > config.MAX_LEN
+    initial_triples = find_head_spo_triples(head)
+    
+    # Step 2 & 3: Find s_end and o_end for each triple
+    final_relations = []
+    for s_start, r, o_start in initial_triples:
+        s_end_candidates = {s_end for s_start_i, s_end in span_set if s_start_i == s_start and s_end < config.MAX_LEN and s_end > s_start}
+        o_end_candidates = {o_end for o_start_i, o_end in span_set if o_start_i == o_start and o_end < config.MAX_LEN and o_end > o_start}
+        
+        # Optional Step 4: Verify existence of (s_end, r, o_end)
+        for s_end in s_end_candidates:
+            for o_end in o_end_candidates:
+                # if ((s_end, r) in tail_set and (r, o_end) in tail_set) or not ((s_end, r), (r, o_end)):
+                    final_relations.append(((s_start, s_end), r, (o_start, o_end)))
+        if not final_relations: 
+            final_relations.append(((s_start, s_start+1), r, (o_start, o_start+1)))
+            final_relations.append(((s_start, s_start+2), r, (o_start, o_start+2)))
+            final_relations.append(((s_start, s_start+2), r, (o_start, o_start+1)))
+            final_relations.append(((s_start, s_start+1), r, (o_start, o_start+2)))
 
-def matrices2relations(head_matrix, tail_matrix, span_matrix):
-    relations = set()
-    # Assuming head_matrix, tail_matrix, and span_matrix are numpy arrays or similar
-    max_len = config.MAX_LEN
-    rel_num = config.REL_NUM
 
-    for i in range(max_len):
-        for j in range(max_len):  # Ensure i < j to avoid duplicate relations
-            if span_matrix[i, j]:
-                # Entity-Relation mapping found, now find the corresponding relation type and entities
-                for rel_idx in range(max_len, max_len + rel_num):
-                    if head_matrix[i, rel_idx] and tail_matrix[j, rel_idx]:
-                        # relation = relation2Id_inv[rel_idx - max_len]
-                        # subject = {"start_idx": i, "end_idx": j}
-                        # Find object for the relation
-                        for k in range(max_len):
-                            if head_matrix[rel_idx, k]:  # Subject-Object mapping
-                                # object_ = {"start_idx": k, "end_idx": k}  # Simplified; in practice, you'd identify the span of the object
-                                for l in range(max_len):
-                                    if span_matrix[k, l]:
-                                        relations.add(((i, j), rel_idx-max_len, (k, l)))
-    return list(relations)
+    return final_relations
+        
+def find_head_spo_triples(head):
+    s_o_candidates = {(x, y) for x, y in head if x < config.MAX_LEN and y < config.MAX_LEN}
+    r_candidates = {x for x, y in head if x > config.MAX_LEN or y > config.MAX_LEN}
+    
+    # Find triples (s, r, o)
+    triples = []
+    for r in r_candidates:
+        # Find all s starting with r
+        s_candidates = {s for s, o in head if o == r and s < config.MAX_LEN}
+        # Find all o ending with r
+        o_candidates = {o for s, o in head if s == r and o < config.MAX_LEN}
+        
+        # Combine s and o candidates to form triples
+        for s in s_candidates:
+            for o in o_candidates:
+                if (s, o) in s_o_candidates:  # Ensure there's a direct connection between s and o
+                    triples.append((s, r, o))
+    
+    return triples
+
+
+
+
+def plot_images(head, tail, span):
+    max_value = config.MAX_LEN+ config.REL_NUM# max(max(max(head), max(tail), key=lambda x: x[1]), max(max(span), key=lambda x: x[1]))
+    matrix_size = max_value + 1  # Adding 1 to include the max value in the index
+
+    # Initialize matrices for head, tail, span, and combined
+    head_matrix = np.zeros((matrix_size, matrix_size))
+    tail_matrix = np.zeros((matrix_size, matrix_size))
+    span_matrix = np.zeros((matrix_size, matrix_size))
+
+    # Populate the matrices
+    for (i, j) in head:
+        head_matrix[i, j] = 1
+    for (i, j) in tail:
+        tail_matrix[i, j] = 1
+    for (i, j) in span:
+        span_matrix[i, j] = 1
+
+    # Combine all the matrices
+    combined_matrix = head_matrix + tail_matrix + span_matrix
+
+    plot_and_save_matrix(head_matrix, 'Head Relations', 'data/images/head.png', colorscale='Greens')
+    plot_and_save_matrix(tail_matrix, 'Tail Relations', 'data/images/tail_relations.png', colorscale='Blues')
+    plot_and_save_matrix(span_matrix, 'Span Relations', 'data/images/span_relations.png', colorscale='Purples')
+    plot_and_save_matrix(combined_matrix, 'Combined Relations', 'data/images/combined_relations.png', colorscale='Reds')
+
+
+
+
+def plot_and_save_matrix(matrix, title, filename, colorscale='Blues'):
+   
+
+    plt.figure(figsize=(8, 6))
+    plt.imshow(matrix, cmap=colorscale, interpolation='nearest')
+    plt.colorbar()
+    plt.title(title)
+    plt.savefig(filename)
+    plt.close()
+

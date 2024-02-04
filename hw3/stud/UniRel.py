@@ -20,7 +20,7 @@ class UniRE(pl.LightningModule):
         self.bert = BertModel.from_pretrained(config.PRETRAINED_MODEL, config=bert_config)
 
         for param in self.bert.parameters():
-            param.requires_grad = False
+            param.requires_grad = True
 
         self.unfreezed_layers = 0
 
@@ -76,7 +76,18 @@ class UniRE(pl.LightningModule):
         t_pred = t_logits > config.THRESHOLD
         span_pred = span_logits > config.THRESHOLD
 
-        # save h_pred, t_pred, span_pred into a file
+        # compute how many ones of the labels are predicted as ones
+        labels_head_ones_indices = labels["head_matrices"].nonzero()
+        labels_tail_ones_indices = labels["tail_matrices"].nonzero()
+        labels_span_ones_indices = labels["span_matrices"].nonzero()
+
+        h_pred_ones_indices = h_pred.nonzero()
+        t_pred_ones_indices = t_pred.nonzero()
+        span_pred_ones_indices = span_pred.nonzero()
+
+        h_pred_percentage = len(set(h_pred_ones_indices).intersection(set(labels_head_ones_indices))) / len(labels_head_ones_indices)
+        t_pred_percentage = len(set(t_pred_ones_indices).intersection(set(labels_tail_ones_indices))) / len(labels_tail_ones_indices)
+        span_pred_percentage = len(set(span_pred_ones_indices).intersection(set(labels_span_ones_indices))) / len(labels_span_ones_indices)
 
         loss = h_loss + t_loss + span_loss
 
@@ -92,6 +103,9 @@ class UniRE(pl.LightningModule):
         # span_wrong = (span_pred != labels["span_matrices"]).sum().item()
 
         self.log("train_loss", loss, prog_bar = True)
+        self.log("h_%", h_pred_percentage, prog_bar = True)
+        self.log("t_%", t_pred_percentage, prog_bar = True)
+        self.log("span_%", span_pred_percentage, prog_bar = True)
 
         return {
             "loss": loss,
@@ -136,7 +150,6 @@ class UniRE(pl.LightningModule):
         pass
 
     def on_train_epoch_end(self):
-        print(f"Epoch {self.epoch_num} finished")
 
         self.epoch_num += 1
 
@@ -147,13 +160,16 @@ class UniRE(pl.LightningModule):
         labels = self.train_labels
         losses = self.train_losses
 
-        if self.epoch_num > 50:
+        if self.epoch_num > 1:
             preds = reconstruct_relations_from_matrices(h_preds, t_preds, span_preds, labels=labels)
 
             acc, prec, rec, f1 = compute_metrics(preds, labels)
 
-            loss = torch.stack(losses).mean()
+            if prec > 0.0:
+                print(prec)
 
+            loss = torch.stack(losses).mean()
+            print()
             print(f"Epoch {self.epoch_num} (TRAIN): Loss: {loss}, train accuracy: {acc}, precision: {prec}, recall: {rec}, f1_score: {f1}")
             self.log("train_accuracy", acc)
             self.log("train_precision", prec)
@@ -176,9 +192,12 @@ class UniRE(pl.LightningModule):
         labels = self.val_labels
         losses = self.val_losses
 
-        # preds = reconstruct_relations_from_matrices(h_preds, t_preds, span_preds)
+        # preds = reconstruct_relations_from_matrices(h_preds, t_preds, span_preds, labels=labels)
 
         # acc, prec, rec, f1 = compute_metrics(preds, labels)
+
+        # if prec > 0.0:
+        #     print(prec)
 
         # loss = torch.stack(losses).mean()
 
