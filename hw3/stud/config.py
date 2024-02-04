@@ -19,7 +19,7 @@ REL2PRED_PATH = os.path.join(DATA_PATH, 'rel2pred.json')
 
 
 
-PRETRAINED_MODEL = 'bert-base-uncased'
+PRETRAINED_MODEL = 'bert-base-cased'
 MAX_LEN = 180
 BATCH_SIZE = 32
 EPOCHs = 10

@@ -119,30 +119,28 @@ def get_label_matrices(labels, relation, position_ids):
         del subject, object
 
         # Entity-Entity
-        head_matrix[s_start, o_start] = 1
-        head_matrix[o_start, s_start] = 1
-        tail_matrix[s_end, o_end] = 1
-        tail_matrix[o_end, s_end] = 1
-        span_matrix[s_start, s_end] = 1
-        span_matrix[s_end, s_start] = 1
-        span_matrix[o_start, o_end] = 1
-        span_matrix[o_end, o_start] = 1
-
-        # Entity-Relation (Subject)
-        head_matrix[s_start, pred_shifted_idx] = 1
-        tail_matrix[s_end, pred_shifted_idx] = 1
-        span_matrix[s_start, pred_shifted_idx] = 1
-        span_matrix[s_end, pred_shifted_idx] = 1
-        span_matrix[o_start, pred_shifted_idx] = 1
-        span_matrix[o_end, pred_shifted_idx] = 1
-
-        # Relation-Entity (Object)
-        head_matrix[pred_shifted_idx, o_start] = 1
-        tail_matrix[pred_shifted_idx, o_end] = 1
-        span_matrix[pred_shifted_idx, o_start] = 1
-        span_matrix[pred_shifted_idx, o_end] = 1
-        span_matrix[pred_shifted_idx, s_start] = 1
-        span_matrix[pred_shifted_idx, s_end] = 1
+        head_matrix[s_start][o_start] = 1
+        head_matrix[o_start][s_start] = 1
+        tail_matrix[s_end][o_end] = 1
+        tail_matrix[o_end][s_end] = 1
+        span_matrix[s_start][s_end] = 1
+        span_matrix[s_end][s_start] = 1
+        span_matrix[o_start][o_end] = 1
+        span_matrix[o_end][o_start] = 1
+        # Subject-Relation Interaction
+        head_matrix[s_start][pred_shifted_idx] = 1
+        tail_matrix[s_end][pred_shifted_idx] = 1
+        span_matrix[s_start][pred_shifted_idx] = 1
+        span_matrix[s_end][pred_shifted_idx] = 1
+        span_matrix[o_start][pred_shifted_idx] = 1
+        span_matrix[o_end][pred_shifted_idx] = 1
+        # Relation-Object Interaction
+        head_matrix[pred_shifted_idx][o_start] = 1
+        tail_matrix[pred_shifted_idx][o_end] = 1
+        span_matrix[pred_shifted_idx][o_start] = 1
+        span_matrix[pred_shifted_idx][o_end] = 1
+        span_matrix[pred_shifted_idx][s_start] = 1
+        span_matrix[pred_shifted_idx][s_end] = 1
 
         e2e.add((s_start, o_start))
         e2e.add((o_start, s_start))
@@ -156,8 +154,8 @@ def get_label_matrices(labels, relation, position_ids):
     tail_ones_coordinates = [(i.item(), j.item()) for i, j in tail_matrix.nonzero()]
     span_ones_coordinates = [(i.item(), j.item()) for i, j in span_matrix.nonzero()]
 
-    # rel = matrices2relations(head_ones_coordinates, tail_ones_coordinates, span_ones_coordinates)
-    # assert len(set(rel).intersection(spo_span)) == len(spo_span), f"Matrices2Relations failed to reconstruct the original spo_span: {rel} != {spo_span}"
+    rel = matrices2relations(head_ones_coordinates, tail_ones_coordinates, span_ones_coordinates)
+    assert len(set(rel).intersection(spo_span)) == len(spo_span), f"Matrices2Relations failed to reconstruct the original spo_span: {rel} != {spo_span}"
 
     labels["head_matrices"].append(head_matrix)
     labels["tail_matrices"].append(tail_matrix)

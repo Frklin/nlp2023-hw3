@@ -32,9 +32,10 @@ if __name__ == '__main__':
     bert_config = BertConfig.from_pretrained(config.PRETRAINED_MODEL,
                                             finetuning_task="UniRel")
     bert_config.num_rels = config.REL_NUM
+    bert_config.num_labels = config.REL_NUM
 
-    model = UniRE(bert_config=bert_config) # this is the main model
+    model = UniRE(bert_config=bert_config) 
 
 
     trainer = Trainer(gpus=1, max_epochs=100, callbacks=[ModelCheckpoint(monitor='val_loss')])#, logger=wandb_logger)
-    trainer.fit(model, train_loader, dev_loader) # trainer fitting the model
+    trainer.fit(model, train_loader, dev_loader) 

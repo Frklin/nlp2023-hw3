@@ -26,11 +26,10 @@ class UniRE(pl.LightningModule):
 
         self.epoch_num = 0
 
-        self.unfreeze_bert()
-
         self.sigmoid = nn.Sigmoid()
 
         self.loss = nn.BCELoss()
+        # self.loss = nn.CrossEntropyLoss(ignore_index=0)
 
         self.train_h_preds = []
         self.train_t_preds = []
@@ -52,7 +51,7 @@ class UniRE(pl.LightningModule):
 
     def forward(self, input_ids, attention_mask, token_type_ids):
         
-        out = self.bert(input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids, output_attentions_scores=True)
+        out = self.bert(input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids,output_attentions=False, output_attentions_scores=True)
 
         attention_scores = out.attentions_scores[-1]
 
@@ -67,14 +66,16 @@ class UniRE(pl.LightningModule):
 
         h_logits, t_logits, span_logits = self(input_ids, attention_mask, token_type_ids)
         
-        h_loss = self.loss(h_logits.float().view(-1), labels["head_matrices"].view(-1).float())
-        t_loss = self.loss(t_logits.float().view(-1), labels["tail_matrices"].view(-1).float())
-        span_loss = self.loss(span_logits.float().view(-1), labels["span_matrices"].view(-1).float())
-
+        h_labels, t_labels, span_labels = labels["head_matrices"], labels["tail_matrices"], labels["span_matrices"]
 
         h_pred = h_logits > config.THRESHOLD
         t_pred = t_logits > config.THRESHOLD
         span_pred = span_logits > config.THRESHOLD
+
+        h_loss = self.loss(h_logits.float().view(-1), labels["head_matrices"].view(-1).float())
+        t_loss = self.loss(t_logits.float().view(-1), labels["tail_matrices"].view(-1).float())
+        span_loss = self.loss(span_logits.float().view(-1), labels["span_matrices"].view(-1).float())
+
 
         # compute how many ones of the labels are predicted as ones
         labels_head_ones_indices = labels["head_matrices"].nonzero()
@@ -89,7 +90,10 @@ class UniRE(pl.LightningModule):
         t_pred_percentage = len(set(t_pred_ones_indices).intersection(set(labels_tail_ones_indices))) / len(labels_tail_ones_indices)
         span_pred_percentage = len(set(span_pred_ones_indices).intersection(set(labels_span_ones_indices))) / len(labels_span_ones_indices)
 
-        loss = h_loss + t_loss + span_loss
+        loss = (h_loss + t_loss + span_loss) + \
+                (h_logits.sum() - labels["head_matrices"].sum()).abs() + \
+                (t_logits.sum() - labels["tail_matrices"].sum()).abs() + \
+                (span_logits.sum() - labels["span_matrices"].sum()).abs()
 
         self.train_h_preds.extend(h_pred)
         self.train_t_preds.extend(t_pred)
