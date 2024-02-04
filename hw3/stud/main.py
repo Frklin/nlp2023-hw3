@@ -37,4 +37,4 @@ if __name__ == '__main__':
 
 
     trainer = Trainer(gpus=1, max_epochs=100, callbacks=[ModelCheckpoint(monitor='val_loss')])#, logger=wandb_logger)
-    trainer.fit(model, train_loader, dev_loader)
+    trainer.fit(model, train_loader, dev_loader) # trainer fitting the model
