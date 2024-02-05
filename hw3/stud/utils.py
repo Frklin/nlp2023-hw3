@@ -121,26 +121,26 @@ def get_label_matrices(labels, relation, position_ids):
         # Entity-Entity
         head_matrix[s_start][o_start] = 1
         head_matrix[o_start][s_start] = 1
-        tail_matrix[s_end][o_end] = 1
-        tail_matrix[o_end][s_end] = 1
-        span_matrix[s_start][s_end] = 1
-        span_matrix[s_end][s_start] = 1
-        span_matrix[o_start][o_end] = 1
-        span_matrix[o_end][o_start] = 1
+        tail_matrix[s_end-1][o_end-1] = 1
+        tail_matrix[o_end-1][s_end-1] = 1
+        span_matrix[s_start][s_end-1] = 1
+        span_matrix[s_end-1][s_start] = 1
+        span_matrix[o_start][o_end-1] = 1
+        span_matrix[o_end-1][o_start] = 1
         # Subject-Relation Interaction
         head_matrix[s_start][pred_shifted_idx] = 1
-        tail_matrix[s_end][pred_shifted_idx] = 1
+        tail_matrix[s_end-1][pred_shifted_idx] = 1
         span_matrix[s_start][pred_shifted_idx] = 1
-        span_matrix[s_end][pred_shifted_idx] = 1
+        span_matrix[s_end-1][pred_shifted_idx] = 1
         span_matrix[o_start][pred_shifted_idx] = 1
-        span_matrix[o_end][pred_shifted_idx] = 1
+        span_matrix[o_end-1][pred_shifted_idx] = 1
         # Relation-Object Interaction
         head_matrix[pred_shifted_idx][o_start] = 1
-        tail_matrix[pred_shifted_idx][o_end] = 1
+        tail_matrix[pred_shifted_idx][o_end-1] = 1
         span_matrix[pred_shifted_idx][o_start] = 1
-        span_matrix[pred_shifted_idx][o_end] = 1
+        span_matrix[pred_shifted_idx][o_end-1] = 1
         span_matrix[pred_shifted_idx][s_start] = 1
-        span_matrix[pred_shifted_idx][s_end] = 1
+        span_matrix[pred_shifted_idx][s_end-1] = 1
 
         e2e.add((s_start, o_start))
         e2e.add((o_start, s_start))
@@ -210,7 +210,7 @@ def matrices2relations(head, tail, span):
         for s_end in s_end_candidates:
             for o_end in o_end_candidates:
                 # if ((s_end, r) in tail_set and (r, o_end) in tail_set) or not ((s_end, r), (r, o_end)):
-                    final_relations.append(((s_start, s_end), r, (o_start, o_end)))
+                    final_relations.append(((s_start, s_end+1), r, (o_start, o_end+1)))
 
 
 
