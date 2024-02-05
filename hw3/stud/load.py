@@ -26,7 +26,7 @@ class RelationDataset(Dataset):
         with open(self.data_path, 'r') as f:
             l = 0
             for line in f:
-                if l == 100:
+                if l == 180:
                     break
                 l+=1
                 data = json.loads(line)
@@ -40,7 +40,7 @@ class RelationDataset(Dataset):
 
     def __getitem__(self, idx):
         tokens = self.tokens[idx]
-        inputs = self.tokenizer(" ".join(tokens), max_length=config.MAX_LEN, truncation=True, padding='max_length')
+        inputs = self.tokenizer(" ".join(tokens), max_length=config.MAX_LEN+2, truncation=True, padding='max_length')
         sep_idx = inputs["input_ids"].index(self.tokenizer.sep_token_id)
         
         input_ids = inputs["input_ids"] + self.encoded_preds['input_ids'] 

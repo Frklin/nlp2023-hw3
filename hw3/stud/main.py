@@ -3,7 +3,7 @@ import sys
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
-from transformers import BertTokenizer, AutoTokenizer
+from transformers import BertTokenizer, AutoTokenizer, BertTokenizerFast
 from pytorch_lightning import Trainer
 
 sys.path.append("../")
@@ -19,7 +19,8 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 
 if __name__ == '__main__':
     seed_everything(config.SEED)
-    tokenizer = AutoTokenizer.from_pretrained(config.PRETRAINED_MODEL)
+    added_token = [f"[unused{i}]" for i in range(1, 17)]
+    tokenizer = BertTokenizerFast.from_pretrained(config.PRETRAINED_MODEL, additional_special_tokens=added_token, do_basic_tokenize=True)
 
     train_data = RelationDataset(config.TRAIN_PATH, tokenizer)
     dev_data = RelationDataset(config.DEV_PATH, tokenizer)
@@ -29,12 +30,20 @@ if __name__ == '__main__':
     dev_loader = DataLoader(dev_data, batch_size=config.BATCH_SIZE, shuffle=False, collate_fn=collate_fn)
     test_loader = DataLoader(test_data, batch_size=config.BATCH_SIZE, shuffle=False, collate_fn=collate_fn)
 
+    
+
     bert_config = BertConfig.from_pretrained(config.PRETRAINED_MODEL,
                                             finetuning_task="UniRel")
     bert_config.num_rels = config.REL_NUM
     bert_config.num_labels = config.REL_NUM
+    bert_config.threshold = config.THRESHOLD
+    config.is_additional_att = False
+    config.is_separate_ablation = False
+    config.test_data_type = False
 
-    model = UniRE(bert_config=bert_config) 
+    model = UniRE(config=bert_config) 
+    model.resize_token_embeddings(len(tokenizer))
+
 
 
     trainer = Trainer(gpus=1, max_epochs=100, callbacks=[ModelCheckpoint(monitor='val_loss')])#, logger=wandb_logger)

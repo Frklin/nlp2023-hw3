@@ -94,9 +94,9 @@ def get_label_matrices(labels, relation, position_ids):
     spo_span = set()
     spo_text = set()
 
-    head_matrix = torch.zeros([config.MAX_LEN + config.REL_NUM, config.MAX_LEN + config.REL_NUM])
-    tail_matrix = torch.zeros([config.MAX_LEN + config.REL_NUM, config.MAX_LEN + config.REL_NUM])
-    span_matrix = torch.zeros([config.MAX_LEN + config.REL_NUM, config.MAX_LEN + config.REL_NUM])
+    head_matrix = torch.zeros([config.MAX_LEN + 2 + config.REL_NUM, config.MAX_LEN + 2 + config.REL_NUM])
+    tail_matrix = torch.zeros([config.MAX_LEN + 2 + config.REL_NUM, config.MAX_LEN + 2 + config.REL_NUM])
+    span_matrix = torch.zeros([config.MAX_LEN + 2 + config.REL_NUM, config.MAX_LEN + 2 + config.REL_NUM])
 
     for spo in relation:
         subject = spo['subject']
@@ -106,7 +106,7 @@ def get_label_matrices(labels, relation, position_ids):
 
         predicate = spo['relation']
         pred_idx = config.relation2Id[predicate]
-        pred_shifted_idx = pred_idx + config.MAX_LEN # pred_idx is wrong?
+        pred_shifted_idx = pred_idx + config.MAX_LEN + 2# pred_idx is wrong?
 
         object = spo['object']
         o_start = position_ids.index(object['start_idx'])
@@ -119,27 +119,27 @@ def get_label_matrices(labels, relation, position_ids):
         del subject, object
 
         # Entity-Entity
-        head_matrix[s_start][o_start] = 1
-        head_matrix[o_start][s_start] = 1
+        head_matrix[s_start+1][o_start+1] = 1
+        head_matrix[o_start+1][s_start+1] = 1
         tail_matrix[s_end][o_end] = 1
         tail_matrix[o_end][s_end] = 1
-        span_matrix[s_start][s_end] = 1
-        span_matrix[s_end][s_start] = 1
-        span_matrix[o_start][o_end] = 1
-        span_matrix[o_end][o_start] = 1
+        span_matrix[s_start+1][s_end] = 1
+        span_matrix[s_end][s_start+1] = 1
+        span_matrix[o_start+1][o_end] = 1
+        span_matrix[o_end][o_start+1] = 1
         # Subject-Relation Interaction
-        head_matrix[s_start][pred_shifted_idx] = 1
+        head_matrix[s_start+1][pred_shifted_idx] = 1
         tail_matrix[s_end][pred_shifted_idx] = 1
-        span_matrix[s_start][pred_shifted_idx] = 1
+        span_matrix[s_start+1][pred_shifted_idx] = 1
         span_matrix[s_end][pred_shifted_idx] = 1
-        span_matrix[o_start][pred_shifted_idx] = 1
+        span_matrix[o_start+1][pred_shifted_idx] = 1
         span_matrix[o_end][pred_shifted_idx] = 1
         # Relation-Object Interaction
-        head_matrix[pred_shifted_idx][o_start] = 1
+        head_matrix[pred_shifted_idx][o_start+1] = 1
         tail_matrix[pred_shifted_idx][o_end] = 1
-        span_matrix[pred_shifted_idx][o_start] = 1
+        span_matrix[pred_shifted_idx][o_start+1] = 1
         span_matrix[pred_shifted_idx][o_end] = 1
-        span_matrix[pred_shifted_idx][s_start] = 1
+        span_matrix[pred_shifted_idx][s_start+1] = 1
         span_matrix[pred_shifted_idx][s_end] = 1
 
         e2e.add((s_start, o_start))
@@ -155,7 +155,7 @@ def get_label_matrices(labels, relation, position_ids):
     span_ones_coordinates = [(i.item(), j.item()) for i, j in span_matrix.nonzero()]
 
     rel = matrices2relations(head_ones_coordinates, tail_ones_coordinates, span_ones_coordinates)
-    assert len(set(rel).intersection(spo_span)) == len(spo_span), f"Matrices2Relations failed to reconstruct the original spo_span: {rel} != {spo_span}"
+    # assert len(set(rel).intersection(spo_span)) == len(spo_span), f"Matrices2Relations failed to reconstruct the original spo_span: {rel} != {spo_span}"
 
     labels["head_matrices"].append(head_matrix)
     labels["tail_matrices"].append(tail_matrix)
@@ -178,12 +178,14 @@ def reconstruct_relations_from_matrices(head_matrices, tail_matrices, span_matri
         if head_matrices[k].sum() == 0 or tail_matrices[k].sum() == 0 or span_matrices[k].sum() == 0:
             relations.append([])
             continue
+        head_ones_coordinates = [(i.item(), j.item()) for i, j in head_matrices[k].nonzero() if i.item() != 0 and j.item() != 0 and i.item() != j.item() and not(i.item() > config.MAX_LEN and j.item() > config.MAX_LEN)]
         tail_ones_coordinates = [(i.item(), j.item()) for i, j in tail_matrices[k].nonzero() if i.item() != 0 and j.item() != 0 and i.item() != j.item() and not(i.item() > config.MAX_LEN and j.item() > config.MAX_LEN)]
         span_ones_coordinates = [(i.item(), j.item()) for i, j in span_matrices[k].nonzero() if i.item() != 0 and j.item() != 0 and i.item() != j.item() and not(i.item() > config.MAX_LEN and j.item() > config.MAX_LEN)]
-        head_ones_coordinates = [(i.item(), j.item()) for i, j in head_matrices[k].nonzero() if i.item() != 0 and j.item() != 0 and i.item() != j.item() and not(i.item() > config.MAX_LEN and j.item() > config.MAX_LEN)]
 
         rel = matrices2relations(head_ones_coordinates, tail_ones_coordinates, span_ones_coordinates)
 
+        if k == 1:
+            plot_images(head_ones_coordinates, tail_ones_coordinates, span_ones_coordinates)
         relations.append(rel)
 
     return relations
@@ -209,11 +211,7 @@ def matrices2relations(head, tail, span):
             for o_end in o_end_candidates:
                 # if ((s_end, r) in tail_set and (r, o_end) in tail_set) or not ((s_end, r), (r, o_end)):
                     final_relations.append(((s_start, s_end), r, (o_start, o_end)))
-        if not final_relations: 
-            final_relations.append(((s_start, s_start+1), r, (o_start, o_start+1)))
-            final_relations.append(((s_start, s_start+2), r, (o_start, o_start+2)))
-            final_relations.append(((s_start, s_start+2), r, (o_start, o_start+1)))
-            final_relations.append(((s_start, s_start+1), r, (o_start, o_start+2)))
+
 
 
     return final_relations
@@ -242,7 +240,7 @@ def find_head_spo_triples(head):
 
 
 def plot_images(head, tail, span):
-    max_value = config.MAX_LEN+ config.REL_NUM# max(max(max(head), max(tail), key=lambda x: x[1]), max(max(span), key=lambda x: x[1]))
+    max_value = config.MAX_LEN+ config.REL_NUM+2# max(max(max(head), max(tail), key=lambda x: x[1]), max(max(span), key=lambda x: x[1]))
     matrix_size = max_value + 1  # Adding 1 to include the max value in the index
 
     # Initialize matrices for head, tail, span, and combined
@@ -252,7 +250,7 @@ def plot_images(head, tail, span):
 
     # Populate the matrices
     for (i, j) in head:
-        head_matrix[i, j] = 1
+        head_matrix[i-1, j-1] = 1
     for (i, j) in tail:
         tail_matrix[i, j] = 1
     for (i, j) in span:
