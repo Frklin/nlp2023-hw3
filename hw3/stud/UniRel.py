@@ -46,7 +46,7 @@ class UniRE(BertPreTrainedModel, pl.LightningModule):
         self.val_losses = []
 
     def unfreeze_bert(self):
-        self.unfreezed_layers += 3
+        self.unfreezed_layers += 1
         for param in self.bert.encoder.layer[-self.unfreezed_layers:].parameters():
             param.requires_grad = True
 
@@ -78,24 +78,24 @@ class UniRE(BertPreTrainedModel, pl.LightningModule):
 
 
         # compute how many ones of the labels are predicted as ones
-        labels_head_ones_indices = labels["head_matrices"].nonzero()
-        labels_tail_ones_indices = labels["tail_matrices"].nonzero()
-        labels_span_ones_indices = labels["span_matrices"].nonzero()
+        labels_head_ones_indices = set(tuple(el) for el in labels["head_matrices"].nonzero().tolist())
+        labels_tail_ones_indices = set(tuple(el) for el in labels["tail_matrices"].nonzero().tolist())
+        labels_span_ones_indices = set(tuple(el) for el in labels["span_matrices"].nonzero().tolist())
 
-        h_pred_ones_indices = h_pred.nonzero()
-        t_pred_ones_indices = t_pred.nonzero()
-        span_pred_ones_indices = span_pred.nonzero()
+        h_pred_ones_indices = set(tuple(el) for el in h_pred.nonzero().tolist())
+        t_pred_ones_indices = set(tuple(el) for el in t_pred.nonzero().tolist())
+        span_pred_ones_indices = set(tuple(el) for el in span_pred.nonzero().tolist())
 
-        h_pred_percentage = len(set(h_pred_ones_indices).intersection(set(labels_head_ones_indices))) / len(labels_head_ones_indices)
-        t_pred_percentage = len(set(t_pred_ones_indices).intersection(set(labels_tail_ones_indices))) / len(labels_tail_ones_indices)
-        span_pred_percentage = len(set(span_pred_ones_indices).intersection(set(labels_span_ones_indices))) / len(labels_span_ones_indices)
+        h_pred_percentage = len(h_pred_ones_indices.intersection(labels_head_ones_indices)) / len(labels_head_ones_indices)
+        t_pred_percentage = len(t_pred_ones_indices.intersection(labels_tail_ones_indices)) / len(labels_tail_ones_indices)
+        span_pred_percentage = len(span_pred_ones_indices.intersection(labels_span_ones_indices)) / len(labels_span_ones_indices)
 
-        if(len(set(h_pred_ones_indices).intersection(set(labels_head_ones_indices))) > 0):
-            print("FOUND AT LEAST ONE")
-        loss = (h_loss + t_loss + span_loss) + \
-                (h_logits.sum() - labels["head_matrices"].sum()).abs() + \
-                (t_logits.sum() - labels["tail_matrices"].sum()).abs() + \
-                (span_logits.sum() - labels["span_matrices"].sum()).abs()
+        # if(len(set(h_pred_ones_indices).intersection(set(labels_head_ones_indices))) > 0):
+        #     print("FOUND AT LEAST ONE")
+        loss = (h_loss + t_loss + span_loss) #+ \
+                # (h_logits.sum() - labels["head_matrices"].sum()).abs() + \
+                # (t_logits.sum() - labels["tail_matrices"].sum()).abs() + \
+                # (span_logits.sum() - labels["span_matrices"].sum()).abs()
 
         self.train_h_preds.extend(h_pred)
         self.train_t_preds.extend(t_pred)
@@ -135,10 +135,10 @@ class UniRE(BertPreTrainedModel, pl.LightningModule):
         t_pred = t_logits > cfg.THRESHOLD
         span_pred = span_logits > cfg.THRESHOLD
 
-        loss = (h_loss + t_loss + span_loss) + \
-                (h_logits.sum() - labels["head_matrices"].sum()).abs() + \
-                (t_logits.sum() - labels["tail_matrices"].sum()).abs() + \
-                (span_logits.sum() - labels["span_matrices"].sum()).abs()
+        loss = (h_loss + t_loss + span_loss)# + \
+                # (h_logits.sum() - labels["head_matrices"].sum()).abs() + \
+                # (t_logits.sum() - labels["tail_matrices"].sum()).abs() + \
+                # (span_logits.sum() - labels["span_matrices"].sum()).abs()
 
         self.val_h_preds.extend(h_pred)
         self.val_t_preds.extend(t_pred)

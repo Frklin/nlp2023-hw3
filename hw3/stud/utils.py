@@ -94,23 +94,23 @@ def get_label_matrices(labels, relation, position_ids):
     spo_span = set()
     spo_text = set()
 
-    head_matrix = torch.zeros([config.MAX_LEN + 2 + config.REL_NUM, config.MAX_LEN + 2 + config.REL_NUM])
-    tail_matrix = torch.zeros([config.MAX_LEN + 2 + config.REL_NUM, config.MAX_LEN + 2 + config.REL_NUM])
-    span_matrix = torch.zeros([config.MAX_LEN + 2 + config.REL_NUM, config.MAX_LEN + 2 + config.REL_NUM])
+    head_matrix = torch.zeros([config.MAX_LEN + config.REL_NUM, config.MAX_LEN + config.REL_NUM])
+    tail_matrix = torch.zeros([config.MAX_LEN + config.REL_NUM, config.MAX_LEN + config.REL_NUM])
+    span_matrix = torch.zeros([config.MAX_LEN + config.REL_NUM, config.MAX_LEN + config.REL_NUM])
 
     for spo in relation:
         subject = spo['subject']
         s_text = subject['text']
         s_start = position_ids.index(subject['start_idx'])
-        s_end = position_ids.index(subject['end_idx'])  
+        s_end = position_ids.index(subject['end_idx']+1)-1  
 
         predicate = spo['relation']
         pred_idx = config.relation2Id[predicate]
-        pred_shifted_idx = pred_idx + config.MAX_LEN + 2# pred_idx is wrong?
+        pred_shifted_idx = pred_idx + config.MAX_LEN# pred_idx is wrong?
 
         object = spo['object']
         o_start = position_ids.index(object['start_idx'])
-        o_end = position_ids.index(object['end_idx']) 
+        o_end = position_ids.index(object['end_idx']+1)-1 
         o_text = object['text']
 
 
@@ -119,27 +119,27 @@ def get_label_matrices(labels, relation, position_ids):
         del subject, object
 
         # Entity-Entity
-        head_matrix[s_start+1][o_start+1] = 1
-        head_matrix[o_start+1][s_start+1] = 1
+        head_matrix[s_start][o_start] = 1
+        head_matrix[o_start][s_start] = 1
         tail_matrix[s_end][o_end] = 1
         tail_matrix[o_end][s_end] = 1
-        span_matrix[s_start+1][s_end] = 1
-        span_matrix[s_end][s_start+1] = 1
-        span_matrix[o_start+1][o_end] = 1
-        span_matrix[o_end][o_start+1] = 1
+        span_matrix[s_start][s_end] = 1
+        span_matrix[s_end][s_start] = 1
+        span_matrix[o_start][o_end] = 1
+        span_matrix[o_end][o_start] = 1
         # Subject-Relation Interaction
-        head_matrix[s_start+1][pred_shifted_idx] = 1
+        head_matrix[s_start][pred_shifted_idx] = 1
         tail_matrix[s_end][pred_shifted_idx] = 1
-        span_matrix[s_start+1][pred_shifted_idx] = 1
+        span_matrix[s_start][pred_shifted_idx] = 1
         span_matrix[s_end][pred_shifted_idx] = 1
-        span_matrix[o_start+1][pred_shifted_idx] = 1
+        span_matrix[o_start][pred_shifted_idx] = 1
         span_matrix[o_end][pred_shifted_idx] = 1
         # Relation-Object Interaction
-        head_matrix[pred_shifted_idx][o_start+1] = 1
+        head_matrix[pred_shifted_idx][o_start] = 1
         tail_matrix[pred_shifted_idx][o_end] = 1
-        span_matrix[pred_shifted_idx][o_start+1] = 1
+        span_matrix[pred_shifted_idx][o_start] = 1
         span_matrix[pred_shifted_idx][o_end] = 1
-        span_matrix[pred_shifted_idx][s_start+1] = 1
+        span_matrix[pred_shifted_idx][s_start] = 1
         span_matrix[pred_shifted_idx][s_end] = 1
 
         e2e.add((s_start, o_start))

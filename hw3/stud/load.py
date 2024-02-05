@@ -6,7 +6,7 @@ import json
 
 class RelationDataset(Dataset):
 
-    def __init__(self, data_path, tokenizer='bert-base-uncased'): 
+    def __init__(self, data_path, tokenizer): 
         self.data_path = data_path
         self.tokens = []
         self.relations = []
@@ -39,19 +39,43 @@ class RelationDataset(Dataset):
 
 
     def __getitem__(self, idx):
-        tokens = self.tokens[idx]
-        inputs = self.tokenizer(" ".join(tokens), max_length=config.MAX_LEN+2, truncation=True, padding='max_length')
-        sep_idx = inputs["input_ids"].index(self.tokenizer.sep_token_id)
+        tokens = ['[CLS]']
+        tokens.extend(self.tokens[idx])
+        # inputs = self.tokenizer(" ".join(tokens), max_length=config.MAX_LEN, truncation=True, padding='max_length')
+        input_ids = []
+        position_ids = [None]
+        for i in range(len(tokens)):
+            encoded_token = self.tokenizer.encode(tokens[i], add_special_tokens=False)
+            input_ids.extend(encoded_token)
+            position_ids.extend([i] * len(encoded_token))
+
+
         
-        input_ids = inputs["input_ids"] + self.encoded_preds['input_ids'] 
-        input_ids[sep_idx] = self.tokenizer.pad_token_id
+        tokens_ids_len = len(input_ids)
+        
+        attention_mask = [1] * tokens_ids_len + [0] * (config.MAX_LEN - tokens_ids_len) + [1] * config.REL_NUM
+        token_type_ids = [0] * config.MAX_LEN + [1] * config.REL_NUM
 
-        attention_mask = inputs["attention_mask"] + [1] * config.REL_NUM
-        attention_mask[sep_idx] = 0
+        # sep_idx = input_ids.index(self.tokenizer.sep_token_id)
+        input_ids = input_ids + [0] * (config.MAX_LEN - tokens_ids_len) + self.encoded_preds['input_ids']
+        # input_ids = input_ids + self.encoded_preds['input_ids']
+        # inputs_ids[sep_idx] = self.tokenizer.pad_token_id
+        # attention_mask[sep_idx] = 0
 
-        token_type_ids = inputs["token_type_ids"] + [1] * config.REL_NUM
 
-        position_ids = inputs.word_ids()
+
+
+        # sep_idx = inputs["input_ids"].index(self.tokenizer.sep_token_id)
+        
+        # input_ids = inputs["input_ids"] + self.encoded_preds['input_ids'] 
+        # input_ids[sep_idx] = self.tokenizer.pad_token_id
+
+        # attention_mask = inputs["attention_mask"] + [1] * config.REL_NUM
+        # attention_mask[sep_idx] = 0
+
+        # token_type_ids = inputs["token_type_ids"] + [1] * config.REL_NUM
+
+        # position_ids = inputs.word_ids()
         set_position_shift(idx, position_ids)
 
         input_ids = torch.tensor(input_ids)
