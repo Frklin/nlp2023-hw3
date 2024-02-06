@@ -19,8 +19,8 @@ class UniRE(BertPreTrainedModel, pl.LightningModule):
 
         self.bert = BertModel.from_pretrained(cfg.PRETRAINED_MODEL, config=config)
 
-        for param in self.bert.parameters():
-            param.requires_grad = True
+        # for param in self.bert.parameters():
+        #     param.requires_grad = True
 
         self.unfreezed_layers = 0
 
