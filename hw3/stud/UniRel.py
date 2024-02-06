@@ -20,11 +20,11 @@ class UniRE(BertPreTrainedModel, pl.LightningModule):
         self.bert = BertModel.from_pretrained(cfg.PRETRAINED_MODEL, config=config)
 
         for param in self.bert.parameters():
-            param.requires_grad = False
+            param.requires_grad = True
 
         self.unfreezed_layers = 0
 
-        self.unfreeze_bert()
+        # self.unfreeze_bert()
 
         self.epoch_num = 0
 
