@@ -15,7 +15,7 @@ DEV_PATH = os.path.join(DATA_PATH, 'dev.jsonl')
 TEST_PATH = os.path.join(DATA_PATH, 'test.jsonl')
 RELATION2ID_PATH = os.path.join(DATA_PATH, 'relations2id.json')
 REL2PRED_PATH = os.path.join(DATA_PATH, 'rel2pred.json')
-
+CKPT_PATH = 'UniRel/'
 
 
 

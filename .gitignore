@@ -1,2 +1,3 @@
 hw3/stud/__pycache__/*
 lightning_logs
+wandb

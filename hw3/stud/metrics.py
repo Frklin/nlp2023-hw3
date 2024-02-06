@@ -19,6 +19,8 @@ def compute_metrics(preds, labels):
 
     for i in range(len(preds)):
         if len(preds[i]) > 0: 
+            # print("PREDICTION: ", set(preds[i]))
+            # print("LABEL: ", set(labels[i]))
             correct_preds += len(set(preds[i]).intersection(set(labels[i])))
         total_preds += len(preds[i])
         total_golds += len(labels[i])
@@ -29,8 +31,8 @@ def compute_metrics(preds, labels):
     recall = correct_preds / total_golds if total_golds > 0 else 0.0
     f1_score = (2 * precision * recall) / (precision + recall) if precision + recall > 0 else 0.0
     
-    if precision > 0.01:
-        print("Next Level")
+    # if precision > 0.01:
+    #     print("Next Level")
 
     return accuracy, precision, recall, f1_score
 

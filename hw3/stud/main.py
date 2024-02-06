@@ -1,19 +1,21 @@
 import os
+os.environ["TOKENIZERS_PARALLELISM"] = "True"
 import sys
+sys.path.append("../")
+
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
 from transformers import BertTokenizer, AutoTokenizer, BertTokenizerFast
 from pytorch_lightning import Trainer
 
-sys.path.append("../")
 import config
 from utils import seed_everything, collate_fn
 from load import RelationDataset
 from UniRel import UniRE
 from transformers import BertConfig
 from pytorch_lightning.callbacks import ModelCheckpoint
-
+from pytorch_lightning.loggers import WandbLogger
 
 
 
@@ -26,7 +28,7 @@ if __name__ == '__main__':
     dev_data = RelationDataset(config.DEV_PATH, tokenizer)
     test_data = RelationDataset(config.TEST_PATH, tokenizer)
 
-    train_loader = DataLoader(train_data, batch_size=config.BATCH_SIZE, shuffle=True, collate_fn=collate_fn)
+    train_loader = DataLoader(train_data, batch_size=config.BATCH_SIZE, shuffle=False, collate_fn=collate_fn)
     dev_loader = DataLoader(dev_data, batch_size=config.BATCH_SIZE, shuffle=False, collate_fn=collate_fn)
     test_loader = DataLoader(test_data, batch_size=config.BATCH_SIZE, shuffle=False, collate_fn=collate_fn)
 
@@ -44,7 +46,14 @@ if __name__ == '__main__':
     model = UniRE(config=bert_config) 
     model.resize_token_embeddings(len(tokenizer))
 
-
-
-    trainer = Trainer(gpus=1, max_epochs=100, callbacks=[ModelCheckpoint(monitor='val_loss')])#, logger=wandb_logger)
+    checkpoint_callback = ModelCheckpoint(
+        monitor='val_loss',
+        dirpath=config.CKPT_PATH,
+        filename='UniRel-{epoch:02d}-{val_loss:.2f}',
+        verbose=True,
+        save_top_k=1,
+        mode='min',
+    )
+    wandb_logger = WandbLogger(name='Run #1', project='UniRel')
+    trainer = Trainer(gpus=1, max_epochs=100, callbacks=checkpoint_callback, logger=wandb_logger)
     trainer.fit(model, train_loader, dev_loader) 
