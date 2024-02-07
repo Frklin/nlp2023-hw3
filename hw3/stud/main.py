@@ -49,9 +49,9 @@ if __name__ == '__main__':
     checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
         dirpath=config.CKPT_PATH,
-        filename='UniRel-{epoch:02d}-{val_loss:.2f}',
+        filename='UniRel-{epoch:02d}-{val_loss:.4f}',
         verbose=True,
-        save_top_k=1,
+        save_top_k=2,
         mode='min',
     )
     wandb_logger = WandbLogger(name='Run #1', project='UniRel')

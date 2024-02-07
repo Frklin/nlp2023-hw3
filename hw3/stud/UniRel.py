@@ -6,7 +6,7 @@ from modify_bert import BertModel
 from metrics import compute_metrics
 from utils import reconstruct_relations_from_matrices
 import wandb
-
+import torch.nn.functional as F
 import config as cfg
 
 
@@ -142,18 +142,35 @@ class UniRE(BertPreTrainedModel, pl.LightningModule):
     def on_train_epoch_end(self):
 
         self.epoch_num += 1
-
-
         losses = self.train_losses
-        h_preds = torch.stack(self.train_h_preds)
-        t_preds = torch.stack(self.train_t_preds)
-        span_preds = torch.stack(self.train_span_preds)
+
+        preds = []
+        for idx in range(0, len(self.train_h_preds), cfg.BATCH_SIZE):
+            selected_train_h_preds = self.train_h_preds[idx:min(len(self.train_h_preds), idx+cfg.BATCH_SIZE)]
+            selected_train_t_preds = self.train_t_preds[idx:min(len(self.train_h_preds), idx+cfg.BATCH_SIZE)]
+            selected_train_span_preds = self.train_span_preds[idx:min(len(self.train_h_preds), idx+cfg.BATCH_SIZE)]
+
+            # max_len = torch.max(torch.tensor([el.shape[0] for el in selected_train_h_preds])).item()
+            # h_preds = torch.stack([F.pad(tensor, (0, max_len - tensor.shape[0], 0, max_len - tensor.shape[0])) for tensor in selected_train_h_preds])
+            # t_preds = torch.stack([F.pad(tensor, (0, max_len - tensor.shape[0], 0, max_len - tensor.shape[0])) for tensor in selected_train_t_preds])
+            # span_preds = torch.stack([F.pad(tensor, (0, max_len - tensor.shape[0], 0, max_len - tensor.shape[0])) for tensor in selected_train_span_preds])
+            h_preds = torch.stack(selected_train_h_preds)
+            t_preds = torch.stack(selected_train_t_preds)
+            span_preds = torch.stack(selected_train_span_preds)
+
+            preds.extend(reconstruct_relations_from_matrices(h_preds, t_preds, span_preds))
+
+            del h_preds, t_preds, span_preds
+
+        # h_preds = torch.stack(self.train_h_preds)
+        # t_preds = torch.stack(self.train_t_preds)
+        # span_preds = torch.stack(self.train_span_preds)
         labels = self.train_labels
         # h_CM_tot = [item[0] for item in self.train_h_CM] 
         # t_CM = self.train_t_CM
         # span_CM = self.train_span_CM
 
-        preds = reconstruct_relations_from_matrices(h_preds, t_preds, span_preds, labels=labels)
+        # preds = reconstruct_relations_from_matrices(h_preds, t_preds, span_preds, labels=labels)
 
         acc, prec, rec, f1 = compute_metrics(preds, labels)
 
@@ -180,9 +197,13 @@ class UniRE(BertPreTrainedModel, pl.LightningModule):
 
 
     def on_validation_epoch_end(self):
-        h_preds = torch.stack(self.val_h_preds)
-        t_preds = torch.stack(self.val_t_preds)
-        span_preds = torch.stack(self.val_span_preds)
+        max_len = torch.max(torch.tensor([el.shape[0] for el in self.val_h_preds])).item()
+        h_preds = torch.stack([F.pad(tensor, (0, max_len - tensor.shape[0], 0, max_len - tensor.shape[0])) for tensor in self.val_h_preds])
+        t_preds = torch.stack([F.pad(tensor, (0, max_len - tensor.shape[0], 0, max_len - tensor.shape[0])) for tensor in self.val_t_preds])
+        span_preds = torch.stack([F.pad(tensor, (0, max_len - tensor.shape[0], 0, max_len - tensor.shape[0])) for tensor in self.val_span_preds])
+        # h_preds = torch.stack(self.val_h_preds)
+        # t_preds = torch.stack(self.val_t_preds)
+        # span_preds = torch.stack(self.val_span_preds)
         labels = self.val_labels
         losses = self.val_losses
 
@@ -211,8 +232,6 @@ class UniRE(BertPreTrainedModel, pl.LightningModule):
         self.val_h_CM = []
         self.val_t_CM = []
         self.val_span_CM = []
-
-
 
 
     def configure_optimizers(self):
