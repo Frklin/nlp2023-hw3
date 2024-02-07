@@ -5,6 +5,8 @@ import torch
 import config
 from dataclasses import dataclass
 import matplotlib.pyplot as plt
+from transformers import  BertTokenizerFast
+from torch.nn.utils.rnn import pad_sequence
 
 
 
@@ -65,38 +67,67 @@ def seed_everything(seed=42):
 
 
 
+# def collate_fn(batch):
+#     indices, input_ids, attention_masks, token_type_ids, position_ids, relations = zip(*batch)
+
+#     labels = {"head_matrices": [], "tail_matrices": [], "span_matrices": [], "spo": []}
+
+#     for i, relation in enumerate(relations):
+#         get_label_matrices(labels, relation, position_ids[i])
+
+#     indices = torch.tensor(indices)
+#     input_ids = torch.stack(input_ids)
+#     attention_masks = torch.stack(attention_masks)
+#     token_type_ids = torch.stack(token_type_ids)
+#     labels["head_matrices"] = torch.stack(labels["head_matrices"])
+#     labels["tail_matrices"] = torch.stack(labels["tail_matrices"])
+#     labels["span_matrices"] = torch.stack(labels["span_matrices"])
+
+#     return indices, input_ids, attention_masks, token_type_ids, labels
+
 def collate_fn(batch):
-    indices, input_ids, attention_masks, token_type_ids, position_ids, relations = zip(*batch)
+    indices, input_ids, position_ids, relations = zip(*batch)
 
     labels = {"head_matrices": [], "tail_matrices": [], "span_matrices": [], "spo": []}
 
+    max_len = max([len(input_id) for input_id in input_ids])
+
+    # Pad input_ids
+    input_ids = pad_sequence(input_ids, batch_first=True, padding_value=0)
+    token_type_ids = torch.zeros_like(input_ids, dtype=torch.int32)
+    preds_type_ids = torch.ones(len(indices), config.REL_NUM, dtype=torch.int32)
+
+
+    # concatenate input_ids with encoded_preds
+    input_ids = torch.cat([input_ids, config.encoded_preds.unsqueeze(0).expand(input_ids.shape[0], -1)], dim=1)
+    position_ids = pad_sequence(position_ids, batch_first=True, padding_value=0).tolist()
+    attention_masks = input_ids != 0
+    attention_masks = attention_masks.int()
+    token_type_ids = torch.cat([token_type_ids, preds_type_ids], dim=1)
+
     for i, relation in enumerate(relations):
-        get_label_matrices(labels, relation, position_ids[i])
+        get_label_matrices(labels, relation, position_ids[i], max_len)
 
     indices = torch.tensor(indices)
-    input_ids = torch.stack(input_ids)
-    attention_masks = torch.stack(attention_masks)
-    token_type_ids = torch.stack(token_type_ids)
     labels["head_matrices"] = torch.stack(labels["head_matrices"])
     labels["tail_matrices"] = torch.stack(labels["tail_matrices"])
     labels["span_matrices"] = torch.stack(labels["span_matrices"])
 
     return indices, input_ids, attention_masks, token_type_ids, labels
+    
 
 
 
-
-
-def get_label_matrices(labels, relation, position_ids):
+def get_label_matrices(labels, relation, position_ids, max_len):
     e2e = set()
     h2r = set()
     t2r = set()
     spo_span = set()
     spo_text = set()
 
-    head_matrix = torch.zeros([config.MAX_LEN + config.REL_NUM, config.MAX_LEN + config.REL_NUM])
-    tail_matrix = torch.zeros([config.MAX_LEN + config.REL_NUM, config.MAX_LEN + config.REL_NUM])
-    span_matrix = torch.zeros([config.MAX_LEN + config.REL_NUM, config.MAX_LEN + config.REL_NUM])
+    head_matrix = torch.zeros([max_len + config.REL_NUM, max_len + config.REL_NUM])
+    tail_matrix = torch.zeros([max_len + config.REL_NUM, max_len + config.REL_NUM])
+    span_matrix = torch.zeros([max_len + config.REL_NUM, max_len + config.REL_NUM])
 
     for spo in relation:
         subject = spo['subject']
@@ -106,7 +137,7 @@ def get_label_matrices(labels, relation, position_ids):
 
         predicate = spo['relation']
         pred_idx = config.relation2Id[predicate]
-        pred_shifted_idx = pred_idx + config.MAX_LEN# pred_idx is wrong?
+        pred_shifted_idx = pred_idx + max_len# pred_idx is wrong?
 
         object = spo['object']
         o_start = position_ids.index(object['start_idx'])
@@ -178,9 +209,9 @@ def reconstruct_relations_from_matrices(head_matrices, tail_matrices, span_matri
         if head_matrices[k].sum() == 0 or tail_matrices[k].sum() == 0 or span_matrices[k].sum() == 0:
             relations.append([])
             continue
-        head_ones_coordinates = [(i.item(), j.item()) for i, j in head_matrices[k].nonzero() if i.item() != 0 and j.item() != 0 and i.item() != j.item() and not(i.item() > config.MAX_LEN and j.item() > config.MAX_LEN)]
-        tail_ones_coordinates = [(i.item(), j.item()) for i, j in tail_matrices[k].nonzero() if i.item() != 0 and j.item() != 0 and i.item() != j.item() and not(i.item() > config.MAX_LEN and j.item() > config.MAX_LEN)]
-        span_ones_coordinates = [(i.item(), j.item()) for i, j in span_matrices[k].nonzero() if i.item() != 0 and j.item() != 0 and i.item() != j.item() and not(i.item() > config.MAX_LEN and j.item() > config.MAX_LEN)]
+        tail_ones_coordinates = [(i.item(), j.item()) for i, j in tail_matrices[k].nonzero() if i.item() != 0 and j.item() != 0 and i.item() != j.item()]# and not(i.item() > config.MAX_LEN and j.item() > config.MAX_LEN)]
+        head_ones_coordinates = [(i.item(), j.item()) for i, j in head_matrices[k].nonzero() if i.item() != 0 and j.item() != 0 and i.item() != j.item()]# and not(i.item() > config.MAX_LEN and j.item() > config.MAX_LEN)]
+        span_ones_coordinates = [(i.item(), j.item()) for i, j in span_matrices[k].nonzero() if i.item() != 0 and j.item() != 0 and i.item() != j.item()]# and not(i.item() > config.MAX_LEN and j.item() > config.MAX_LEN)]
 
         rel = matrices2relations(head_ones_coordinates, tail_ones_coordinates, span_ones_coordinates)
 
@@ -203,8 +234,8 @@ def matrices2relations(head, tail, span):
     # Step 2 & 3: Find s_end and o_end for each triple
     final_relations = []
     for s_start, r, o_start in initial_triples:
-        s_end_candidates = {s_end for s_start_i, s_end in span_set if s_start_i == s_start and s_end < config.MAX_LEN and s_end > s_start}
-        o_end_candidates = {o_end for o_start_i, o_end in span_set if o_start_i == o_start and o_end < config.MAX_LEN and o_end > o_start}
+        s_end_candidates = {s_end for s_start_i, s_end in span_set if s_start_i == s_start}# and s_end < config.MAX_LEN and s_end > s_start}
+        o_end_candidates = {o_end for o_start_i, o_end in span_set if o_start_i == o_start}# and o_end < config.MAX_LEN and o_end > o_start}
         
         # Optional Step 4: Verify existence of (s_end, r, o_end)
         for s_end in s_end_candidates:
@@ -217,16 +248,16 @@ def matrices2relations(head, tail, span):
     return final_relations
         
 def find_head_spo_triples(head):
-    s_o_candidates = {(x, y) for x, y in head if x < config.MAX_LEN and y < config.MAX_LEN}
-    r_candidates = {x for x, y in head if x > config.MAX_LEN or y > config.MAX_LEN}
+    s_o_candidates = {(x, y) for x, y in head}# if x < config.MAX_LEN and y < config.MAX_LEN}
+    r_candidates = {x for x, y in head}# if x > config.MAX_LEN or y > config.MAX_LEN}
     
     # Find triples (s, r, o)
     triples = []
     for r in r_candidates:
         # Find all s starting with r
-        s_candidates = {s for s, o in head if o == r and s < config.MAX_LEN}
+        s_candidates = {s for s, o in head if o == r}# and s < config.MAX_LEN}
         # Find all o ending with r
-        o_candidates = {o for s, o in head if s == r and o < config.MAX_LEN}
+        o_candidates = {o for s, o in head if s == r}# and o < config.MAX_LEN}
         
         # Combine s and o candidates to form triples
         for s in s_candidates:
@@ -240,7 +271,7 @@ def find_head_spo_triples(head):
 
 
 def plot_images(head, tail, span):
-    max_value = config.MAX_LEN+ config.REL_NUM+2# max(max(max(head), max(tail), key=lambda x: x[1]), max(max(span), key=lambda x: x[1]))
+    max_value = 400#config.MAX_LEN+ config.REL_NUM+2# max(max(max(head), max(tail), key=lambda x: x[1]), max(max(span), key=lambda x: x[1]))
     matrix_size = max_value + 1  # Adding 1 to include the max value in the index
 
     # Initialize matrices for head, tail, span, and combined

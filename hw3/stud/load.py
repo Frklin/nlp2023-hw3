@@ -23,10 +23,11 @@ class RelationDataset(IterableDataset):
         self.data = self.load_data()
 
     def load_data(self):
+        config.encoded_preds = torch.tensor(self.encoded_preds['input_ids'])
         with open(self.data_path, 'r') as f:
-            # l = 0
+            l = 0
             for line in f:
-                # if l == 100:
+                # if l == 10:
                 #     break
                 # l+=1
                 data = json.loads(line)
@@ -39,27 +40,29 @@ class RelationDataset(IterableDataset):
             tokens.extend(self.tokens[idx])
 
             input_ids = []
-            position_ids = [None]
+            position_ids = [-1]
             for i in range(len(tokens)):
                 encoded_token = self.tokenizer.encode(tokens[i], add_special_tokens=False)
                 input_ids.extend(encoded_token)
                 position_ids.extend([i] * len(encoded_token))
             
-            tokens_ids_len = len(input_ids)
+            # tokens_ids_len = len(input_ids)
             
-            attention_mask = [1] * tokens_ids_len + [0] * (config.MAX_LEN - tokens_ids_len) + [1] * config.REL_NUM
-            token_type_ids = [0] * config.MAX_LEN + [1] * config.REL_NUM
+            # attention_mask = [1] * tokens_ids_len + [0] * (config.MAX_LEN - tokens_ids_len) + [1] * config.REL_NUM
+            # token_type_ids = [0] * config.MAX_LEN + [1] * config.REL_NUM
 
-            input_ids = input_ids + [0] * (config.MAX_LEN - tokens_ids_len) + self.encoded_preds['input_ids']
+            # input_ids = input_ids + [0] * (config.MAX_LEN - tokens_ids_len) + self.encoded_preds['input_ids']
 
 
             set_position_shift(idx, position_ids)
 
             input_ids = torch.tensor(input_ids)
-            attention_mask = torch.tensor(attention_mask)
-            token_type_ids = torch.tensor(token_type_ids)
+            position_ids = torch.tensor(position_ids)
+            # attention_mask = torch.tensor(attention_mask)
+            # token_type_ids = torch.tensor(token_type_ids)
 
-            yield idx, input_ids, attention_mask, token_type_ids, position_ids, self.relations[idx]
+            # yield idx, input_ids, attention_mask, token_type_ids, position_ids, self.relations[idx]
+            yield idx, input_ids, position_ids, self.relations[idx]
 
 
 
