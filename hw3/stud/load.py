@@ -44,7 +44,7 @@ class RelationDataset(IterableDataset):
                 encoded_token = self.tokenizer.encode(tokens[i], add_special_tokens=False)
                 input_ids.extend(encoded_token)
                 position_ids.extend([i] * len(encoded_token))
-
+            
             tokens_ids_len = len(input_ids)
             
             attention_mask = [1] * tokens_ids_len + [0] * (config.MAX_LEN - tokens_ids_len) + [1] * config.REL_NUM

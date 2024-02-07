@@ -55,5 +55,5 @@ if __name__ == '__main__':
         mode='min',
     )
     wandb_logger = WandbLogger(name='Run #1', project='UniRel')
-    trainer = Trainer(gpus=1, max_epochs=100, callbacks=checkpoint_callback, logger=wandb_logger)
+    trainer = Trainer(max_epochs=100, callbacks=checkpoint_callback, logger=wandb_logger, accelerator="gpu", devices=1)
     trainer.fit(model, train_loader, dev_loader) 
