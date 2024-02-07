@@ -88,7 +88,7 @@ class UniRE(BertPreTrainedModel, pl.LightningModule):
         self.train_span_CM.append((span_TP, span_FP, span_FN))
 
         
-        self.log("train_loss_batch", loss, prog_bar = True)
+        self.log("train_loss", loss, prog_bar = True, on_step=False, on_epoch=True)
         wandb.log({"h_TP_train": h_TP, "h_FP_train": h_FP, "h_FN_train": h_FN, "t_TP_train": t_TP, "t_FP_train": t_FP, "t_FN_train": t_FN, "span_TP_train": span_TP, "span_FP_train": span_FP, "span_FN_train": span_FN})
 
         return {
@@ -127,7 +127,7 @@ class UniRE(BertPreTrainedModel, pl.LightningModule):
         self.val_t_CM.append((t_TP*len(labels["tail_matrices"].nonzero()), len(labels["tail_matrices"].nonzero())))
         self.val_span_CM.append((span_TP*len(labels["span_matrices"].nonzero()), len(labels["span_matrices"].nonzero())))
        
-        self.log("val_loss_batch", loss, prog_bar = True)
+        self.log("val_loss", loss, prog_bar = True, on_step=False, on_epoch=True)
         wandb.log({"h_TP_val": h_TP, "h_FP_val": h_FP, "h_FN_val": h_FN, "t_TP_val": t_TP, "t_FP_val": t_FP, "t_FN_val": t_FN, "span_TP_val": span_TP, "span_FP_val": span_FP, "span_FN_val": span_FN})
 
         return {
@@ -164,7 +164,7 @@ class UniRE(BertPreTrainedModel, pl.LightningModule):
         self.log("train_precision", prec)
         self.log("train_recall", rec)
         self.log("train_f1_score", f1)
-        self.log("train_loss", loss)
+        self.log("epoch_train_loss", loss)
         # wandb.log({"train_accuracy": acc, "train_precision": prec, "train_recall": rec, "train_f1_score": f1, "train_loss": loss})
         
 
@@ -197,11 +197,11 @@ class UniRE(BertPreTrainedModel, pl.LightningModule):
         # wandb.log({"val_accuracy": acc, "val_precision": prec, "val_recall": rec, "val_f1_score": f1, "val_loss": loss})
 
         print(f"Epoch {self.epoch_num} (VAL): Loss: {loss}, val accuracy: {acc}, precision: {prec}, recall: {rec}, f1_score: {f1}")
-        self.log("val_accuracy", acc, on_epoch=True)
-        self.log("val_precision", prec, on_epoch=True)
-        self.log("val_recall", rec, on_epoch=True)
-        self.log("val_f1_score", f1, on_epoch=True)
-        self.log("val_loss", loss, on_epoch=True)
+        self.log("val_accuracy", acc)
+        self.log("val_precision", prec)
+        self.log("val_recall", rec)
+        self.log("val_f1_score", f1)
+        self.log("epoch_val_loss", loss)
 
         self.val_h_preds = []
         self.val_t_preds = []
