@@ -19,19 +19,11 @@ class UniRE(BertPreTrainedModel, pl.LightningModule):
 
         self.bert = BertModel.from_pretrained(cfg.PRETRAINED_MODEL, config=config)
 
-        # for param in self.bert.parameters():
-        #     param.requires_grad = True
-
-        self.unfreezed_layers = 0
-
-        # self.unfreeze_bert()
-
         self.epoch_num = 0
 
         self.sigmoid = nn.Sigmoid()
 
         self.loss = nn.BCELoss()
-        # self.loss = nn.CrossEntropyLoss(ignore_index=0)
 
         self.train_h_preds = []
         self.train_t_preds = []
@@ -50,12 +42,6 @@ class UniRE(BertPreTrainedModel, pl.LightningModule):
         self.val_h_CM = []
         self.val_t_CM = []
         self.val_span_CM = []
-
-    def unfreeze_bert(self):
-        self.unfreezed_layers += 1
-        for param in self.bert.encoder.layer[-self.unfreezed_layers:].parameters():
-            param.requires_grad = True
-
 
     def forward(self, input_ids, attention_mask, token_type_ids):
         
