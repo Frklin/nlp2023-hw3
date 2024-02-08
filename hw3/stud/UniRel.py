@@ -43,6 +43,15 @@ class UniRE(BertPreTrainedModel, pl.LightningModule):
         self.val_t_CM = []
         self.val_span_CM = []
 
+        self.test_h_preds = []
+        self.test_t_preds = []
+        self.test_span_preds = []
+        self.test_labels = []
+        self.test_losses = []
+        self.test_h_CM = []
+        self.test_t_CM = []
+        self.test_span_CM = []
+
     def forward(self, input_ids, attention_mask, token_type_ids):
         
         out = self.bert(input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids, output_attentions=False, output_attentions_scores=True)
@@ -137,7 +146,39 @@ class UniRE(BertPreTrainedModel, pl.LightningModule):
 
 
     def test_step(self, batch, batch_idx):
-        pass
+        indices, input_ids, attention_mask, token_type_ids, labels = batch
+
+        h_logits, t_logits, span_logits = self(input_ids, attention_mask, token_type_ids)
+
+        h_pred = h_logits > cfg.THRESHOLD
+        t_pred = t_logits > cfg.THRESHOLD
+        span_pred = span_logits > cfg.THRESHOLD
+
+        h_loss = self.loss(h_logits.float().view(-1), labels["head_matrices"].view(-1).float())
+        t_loss = self.loss(t_logits.float().view(-1), labels["tail_matrices"].view(-1).float())
+        span_loss = self.loss(span_logits.float().view(-1), labels["span_matrices"].view(-1).float())
+
+        h_TP, h_FP, h_FN = self.compute_confusion_matrix(h_pred, labels["head_matrices"])
+        t_TP, t_FP, t_FN = self.compute_confusion_matrix(t_pred, labels["tail_matrices"])
+        span_TP, span_FP, span_FN = self.compute_confusion_matrix(span_pred, labels["span_matrices"])
+
+        loss = (h_loss + t_loss + span_loss)
+
+        self.test_losses.append(loss)
+        self.test_h_preds.extend(h_pred)
+        self.test_t_preds.extend(t_pred)
+        self.test_span_preds.extend(span_pred)
+        self.test_labels.extend(labels["spo"])
+        self.test_h_CM.append((h_TP*len(labels["head_matrices"].nonzero()), len(labels["head_matrices"].nonzero())))
+        self.test_t_CM.append((t_TP*len(labels["tail_matrices"].nonzero()), len(labels["tail_matrices"].nonzero())))
+        self.test_span_CM.append((span_TP*len(labels["span_matrices"].nonzero()), len(labels["span_matrices"].nonzero())))
+
+        self.log("test_loss", loss, prog_bar = True, on_step=False, on_epoch=True)
+
+        return {
+            "loss": loss,
+        }
+                                                                
 
     def on_train_epoch_end(self):
 
@@ -150,10 +191,6 @@ class UniRE(BertPreTrainedModel, pl.LightningModule):
             selected_train_t_preds = self.train_t_preds[idx:min(len(self.train_h_preds), idx+cfg.BATCH_SIZE)]
             selected_train_span_preds = self.train_span_preds[idx:min(len(self.train_h_preds), idx+cfg.BATCH_SIZE)]
 
-            # max_len = torch.max(torch.tensor([el.shape[0] for el in selected_train_h_preds])).item()
-            # h_preds = torch.stack([F.pad(tensor, (0, max_len - tensor.shape[0], 0, max_len - tensor.shape[0])) for tensor in selected_train_h_preds])
-            # t_preds = torch.stack([F.pad(tensor, (0, max_len - tensor.shape[0], 0, max_len - tensor.shape[0])) for tensor in selected_train_t_preds])
-            # span_preds = torch.stack([F.pad(tensor, (0, max_len - tensor.shape[0], 0, max_len - tensor.shape[0])) for tensor in selected_train_span_preds])
             h_preds = torch.stack(selected_train_h_preds)
             t_preds = torch.stack(selected_train_t_preds)
             span_preds = torch.stack(selected_train_span_preds)
@@ -162,15 +199,7 @@ class UniRE(BertPreTrainedModel, pl.LightningModule):
 
             del h_preds, t_preds, span_preds
 
-        # h_preds = torch.stack(self.train_h_preds)
-        # t_preds = torch.stack(self.train_t_preds)
-        # span_preds = torch.stack(self.train_span_preds)
         labels = self.train_labels
-        # h_CM_tot = [item[0] for item in self.train_h_CM] 
-        # t_CM = self.train_t_CM
-        # span_CM = self.train_span_CM
-
-        # preds = reconstruct_relations_from_matrices(h_preds, t_preds, span_preds, labels=labels)
 
         acc, prec, rec, f1 = compute_metrics(preds, labels)
 
@@ -182,7 +211,6 @@ class UniRE(BertPreTrainedModel, pl.LightningModule):
         self.log("train_recall", rec)
         self.log("train_f1_score", f1)
         self.log("epoch_train_loss", loss)
-        # wandb.log({"train_accuracy": acc, "train_precision": prec, "train_recall": rec, "train_f1_score": f1, "train_loss": loss})
         
 
         self.train_h_preds = []
@@ -194,16 +222,11 @@ class UniRE(BertPreTrainedModel, pl.LightningModule):
         self.train_t_CM = []
         self.train_span_CM = []
 
-
-
     def on_validation_epoch_end(self):
         max_len = torch.max(torch.tensor([el.shape[0] for el in self.val_h_preds])).item()
         h_preds = torch.stack([F.pad(tensor, (0, max_len - tensor.shape[0], 0, max_len - tensor.shape[0])) for tensor in self.val_h_preds])
         t_preds = torch.stack([F.pad(tensor, (0, max_len - tensor.shape[0], 0, max_len - tensor.shape[0])) for tensor in self.val_t_preds])
         span_preds = torch.stack([F.pad(tensor, (0, max_len - tensor.shape[0], 0, max_len - tensor.shape[0])) for tensor in self.val_span_preds])
-        # h_preds = torch.stack(self.val_h_preds)
-        # t_preds = torch.stack(self.val_t_preds)
-        # span_preds = torch.stack(self.val_span_preds)
         labels = self.val_labels
         losses = self.val_losses
 
@@ -215,7 +238,6 @@ class UniRE(BertPreTrainedModel, pl.LightningModule):
 
         loss = torch.stack(losses).mean()
 
-        # wandb.log({"val_accuracy": acc, "val_precision": prec, "val_recall": rec, "val_f1_score": f1, "val_loss": loss})
 
         print(f"Epoch {self.epoch_num} (VAL): Loss: {loss}, val accuracy: {acc}, precision: {prec}, recall: {rec}, f1_score: {f1}")
         self.log("val_accuracy", acc)
@@ -233,9 +255,40 @@ class UniRE(BertPreTrainedModel, pl.LightningModule):
         self.val_t_CM = []
         self.val_span_CM = []
 
+    def on_test_epoch_end(self):
+        max_len = torch.max(torch.tensor([el.shape[0] for el in self.test_h_preds])).item()
+        h_preds = torch.stack([F.pad(tensor, (0, max_len - tensor.shape[0], 0, max_len - tensor.shape[0])) for tensor in self.test_h_preds])
+        t_preds = torch.stack([F.pad(tensor, (0, max_len - tensor.shape[0], 0, max_len - tensor.shape[0])) for tensor in self.test_t_preds])
+        span_preds = torch.stack([F.pad(tensor, (0, max_len - tensor.shape[0], 0, max_len - tensor.shape[0])) for tensor in self.test_span_preds])
+        labels = self.test_labels
+        losses = self.test_losses
+
+        _, _, _ = self.matrix_precision(self.test_h_CM, "h"), self.matrix_precision(self.test_t_CM, "t"), self.matrix_precision(self.test_span_CM, "span")
+
+        preds = reconstruct_relations_from_matrices(h_preds, t_preds, span_preds, labels=labels)
+
+        acc, prec, rec, f1 = compute_metrics(preds, labels)
+
+        loss = torch.stack(losses).mean()
+
+        print(f"Epoch {self.epoch_num} (TEST): Loss: {loss}, test accuracy: {acc}, precision: {prec}, recall: {rec}, f1_score: {f1}")
+        self.log("test_accuracy", acc)
+        self.log("test_precision", prec)
+        self.log("test_recall", rec)
+        self.log("test_f1_score", f1)
+        self.log("epoch_test_loss", loss)
+
+        self.test_h_preds = []
+        self.test_t_preds = []
+        self.test_span_preds = []
+        self.test_labels = []
+        self.test_losses = []
+        self.test_h_CM = []
+        self.test_t_CM = []
+        self.test_span_CM = []
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters(), lr=cfg.LR)
+        return torch.optim.Adam(self.parameters(), lr=cfg.LR, weight_decay=cfg.WEIGHT_DECAY)
     
 
     def compute_confusion_matrix(self, preds, labels):
@@ -260,7 +313,7 @@ class UniRE(BertPreTrainedModel, pl.LightningModule):
         
         precision = correct / n_labels
 
-        wandb.log({f"{matrix_type}_precision": precision})
+        if not cfg.TEST_MODE:
+            wandb.log({f"{matrix_type}_precision": precision})
 
-        # print(f"precision for {matrix_type}: {precision}")
         return precision
