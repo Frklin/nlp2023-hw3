@@ -5,7 +5,8 @@ from load import parseRelation2Id, parseRel2Pred
 
 
 
-
+DEBUG = 0
+TEST_MODE = 0
 
 
 # PATHS
@@ -28,7 +29,7 @@ LR = 3e-5
 WEIGHT_DECAY = 0.01
 
 SEED = 42
-TEST_MODE = True
+BIDIRECTIONAL = True
 
 
 relation2Id = parseRelation2Id(RELATION2ID_PATH)

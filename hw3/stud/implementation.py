@@ -38,9 +38,9 @@ class StudentModel(Model):
     # this class should be loading your weights and vocabulary
 
     def __init__(self):
-        # Load your models/tokenizer/etc. that only needs to be loaded once when doing inference
+        # self.model = 
         pass
-
+    
     def predict(self, tokens: List[List[str]]) -> List[List[Dict]]:
         # STUDENT: implement here your predict function
         pass

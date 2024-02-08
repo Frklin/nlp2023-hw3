@@ -187,6 +187,7 @@ class UniRE(BertPreTrainedModel, pl.LightningModule):
 
         preds = []
         for idx in range(0, len(self.train_h_preds), cfg.BATCH_SIZE):
+            max_len = self.train_h_preds[idx].shape[0]
             selected_train_h_preds = self.train_h_preds[idx:min(len(self.train_h_preds), idx+cfg.BATCH_SIZE)]
             selected_train_t_preds = self.train_t_preds[idx:min(len(self.train_h_preds), idx+cfg.BATCH_SIZE)]
             selected_train_span_preds = self.train_span_preds[idx:min(len(self.train_h_preds), idx+cfg.BATCH_SIZE)]
@@ -195,7 +196,7 @@ class UniRE(BertPreTrainedModel, pl.LightningModule):
             t_preds = torch.stack(selected_train_t_preds)
             span_preds = torch.stack(selected_train_span_preds)
 
-            preds.extend(reconstruct_relations_from_matrices(h_preds, t_preds, span_preds))
+            preds.extend(reconstruct_relations_from_matrices(h_preds, t_preds, span_preds, max_len))
 
             del h_preds, t_preds, span_preds
 
@@ -203,8 +204,8 @@ class UniRE(BertPreTrainedModel, pl.LightningModule):
 
         acc, prec, rec, f1 = compute_metrics(preds, labels)
 
-
         loss = torch.stack(losses).mean()
+
         print(f"Epoch {self.epoch_num} (TRAIN): Loss: {loss}, train accuracy: {acc}, precision: {prec}, recall: {rec}, f1_score: {f1}")
         self.log("train_accuracy", acc)
         self.log("train_precision", prec)
@@ -232,7 +233,7 @@ class UniRE(BertPreTrainedModel, pl.LightningModule):
 
         _, _, _ = self.matrix_precision(self.val_h_CM, "h"), self.matrix_precision(self.val_t_CM, "t"), self.matrix_precision(self.val_span_CM, "span")
 
-        preds = reconstruct_relations_from_matrices(h_preds, t_preds, span_preds, labels=labels)
+        preds = reconstruct_relations_from_matrices(h_preds, t_preds, span_preds, max_len)
 
         acc, prec, rec, f1 = compute_metrics(preds, labels)
 
@@ -265,7 +266,7 @@ class UniRE(BertPreTrainedModel, pl.LightningModule):
 
         _, _, _ = self.matrix_precision(self.test_h_CM, "h"), self.matrix_precision(self.test_t_CM, "t"), self.matrix_precision(self.test_span_CM, "span")
 
-        preds = reconstruct_relations_from_matrices(h_preds, t_preds, span_preds, labels=labels)
+        preds = reconstruct_relations_from_matrices(h_preds, t_preds, span_preds, max_len)
 
         acc, prec, rec, f1 = compute_metrics(preds, labels)
 
