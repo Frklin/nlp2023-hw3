@@ -65,7 +65,7 @@ def get_label_matrices(labels, relation, position_ids, max_len):
     for spo in relation:
         subject = spo['subject']
         s_start = position_ids.index(subject['start_idx'])
-        s_end = position_ids.index(subject['end_idx']+1)-1  
+        s_end = position_ids.index(subject['end_idx'])
 
         predicate = spo['relation']
         pred_idx = config.relation2Id[predicate]
@@ -73,7 +73,7 @@ def get_label_matrices(labels, relation, position_ids, max_len):
 
         object = spo['object']
         o_start = position_ids.index(object['start_idx'])
-        o_end = position_ids.index(object['end_idx']+1)-1 
+        o_end = position_ids.index(object['end_idx'])
 
         del subject, object
 

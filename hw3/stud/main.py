@@ -76,5 +76,5 @@ if __name__ == '__main__':
 
     run_name = forge_name()
     wandb_logger = WandbLogger(name=run_name, project='UniRel')
-    trainer = Trainer(max_epochs=100, callbacks=checkpoint_callback, logger=wandb_logger, accelerator="gpu", devices=1)
+    trainer = Trainer(max_epochs=100, callbacks=checkpoint_callback, accelerator="gpu", devices=1,  logger=wandb_logger)
     trainer.fit(model, train_loader, dev_loader) 

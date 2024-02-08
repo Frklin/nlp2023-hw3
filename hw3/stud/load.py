@@ -27,9 +27,9 @@ class RelationDataset(IterableDataset):
         with open(self.data_path, 'r') as f:
             l = 0
             for line in f:
-                # if l == 10:
-                #     break
-                # l+=1
+                if l == 10:
+                    break
+                l+=1
                 data = json.loads(line)
                 self.tokens.append(data['tokens'])
                 self.relations.append(data["relations"])
