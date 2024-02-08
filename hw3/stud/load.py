@@ -36,10 +36,10 @@ class RelationDataset(IterableDataset):
 
     def __iter__(self):
         for idx in range(len(self.tokens)):
-            tokens = ['[CLS]']
-            tokens.extend(self.tokens[idx])
+            # tokens = ['[CLS]']
+            tokens = self.tokens[idx]
 
-            input_ids = []
+            input_ids = [101]
             position_ids = [-1]
             for i in range(len(tokens)):
                 encoded_token = self.tokenizer.encode(tokens[i], add_special_tokens=False)

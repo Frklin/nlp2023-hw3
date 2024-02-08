@@ -15,13 +15,23 @@ from transformers import BertConfig
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
 
+def forge_name():
+    name = ""
+    name += "BI-" if config.BIDIRECTIONAL else "UNI-"
+    name += "BERT-" if config.PRETRAINED_MODEL == "bert-base-cased" else "BARD-"
+    name += f"bs={config.BATCH_SIZE}-"
+    name += f"lr={config.LR}-"
+    name += f"wd={config.WEIGHT_DECAY}-"
+    name += f"TH={config.THRESHOLD}"
+    return name 
+
 
 
 if __name__ == '__main__':
     seed_everything(config.SEED)
-    # added_token = [f"[unused{i}]" for i in range(1, 17)] # to removce
-    # tokenizer = BertTokenizerFast.from_pretrained(config.PRETRAINED_MODEL, additional_special_tokens=added_token, do_basic_tokenize=True)
-    tokenizer = BertTokenizerFast.from_pretrained(config.PRETRAINED_MODEL, do_basic_tokenize=True)
+    added_token = [f"[unused{i}]" for i in range(1, 17)] # to removce
+    tokenizer = BertTokenizerFast.from_pretrained(config.PRETRAINED_MODEL, additional_special_tokens=added_token, do_basic_tokenize=True)
+    # tokenizer = BertTokenizerFast.from_pretrained(config.PRETRAINED_MODEL, do_basic_tokenize=True)
 
     train_data = RelationDataset(config.TRAIN_PATH, tokenizer)
     dev_data = RelationDataset(config.DEV_PATH, tokenizer)
@@ -64,6 +74,7 @@ if __name__ == '__main__':
     )
 
 
-    wandb_logger = WandbLogger(name='Run #1', project='UniRel')
+    run_name = forge_name()
+    wandb_logger = WandbLogger(name=run_name, project='UniRel')
     trainer = Trainer(max_epochs=100, callbacks=checkpoint_callback, logger=wandb_logger, accelerator="gpu", devices=1)
     trainer.fit(model, train_loader, dev_loader) 

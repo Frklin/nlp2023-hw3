@@ -79,13 +79,13 @@ def get_label_matrices(labels, relation, position_ids, max_len):
 
         # Entity-Entity
         head_matrix[s_start][o_start] = 1
-        head_matrix[o_start][s_start] = 1
+        head_matrix[o_start][s_start] = 1   if config.BIDIRECTIONAL else 0
         tail_matrix[s_end][o_end] = 1
-        tail_matrix[o_end][s_end] = 1
+        tail_matrix[o_end][s_end] = 1       if config.BIDIRECTIONAL else 0
         span_matrix[s_start][s_end] = 1
-        span_matrix[s_end][s_start] = 1
+        span_matrix[s_end][s_start] = 1     if config.BIDIRECTIONAL else 0
         span_matrix[o_start][o_end] = 1
-        span_matrix[o_end][o_start] = 1
+        span_matrix[o_end][o_start] = 1     if config.BIDIRECTIONAL else 0
         # Subject-Relation Interaction
         head_matrix[s_start][pred_shifted_idx] = 1
         tail_matrix[s_end][pred_shifted_idx] = 1
@@ -193,3 +193,25 @@ def find_head_spo_triples(head, max_len):
 
 
 
+def convert_to_string_format(idx, relations, max_len):
+    '''
+    relations: list of tuples of the form ((s_start, s_end), r, (o_start, o_end))
+
+    return: list of dicts of the form {"subject": {"start_idx": int, "end_idx": int}, "relation": str, "object": {"start_idx": int, "end_idx": int}}
+    '''
+
+    formatted_relations = []
+    for rel in relations:
+        formatted_relations.append({"subject": 
+                                    {
+                                        "start_idx": config.index_shift[idx][rel[0][0]],
+                                        "end_idx": config.index_shift[idx][rel[0][1]]
+                                    },
+                                    "relation": config.id2relation[rel[1]-max_len],
+                                    "object": 
+                                    {
+                                        "start_idx": config.index_shift[idx][rel[2][0]],
+                                        "end_idx": config.index_shift[idx][rel[2][1]]
+                                    }
+                                    })
+    return formatted_relations

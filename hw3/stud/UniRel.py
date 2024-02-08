@@ -4,7 +4,7 @@ import torch.nn as nn
 from transformers import AutoModel, BertPreTrainedModel
 from modify_bert import BertModel
 from metrics import compute_metrics
-from utils import reconstruct_relations_from_matrices
+from utils import reconstruct_relations_from_matrices, convert_to_string_format
 import wandb
 import torch.nn.functional as F
 import config as cfg
@@ -287,6 +287,25 @@ class UniRE(BertPreTrainedModel, pl.LightningModule):
         self.test_h_CM = []
         self.test_t_CM = []
         self.test_span_CM = []
+
+    def predict(self, data):
+
+        indices, input_ids, attention_mask, token_type_ids = data
+
+        h_logits, t_logits, span_logits = self(input_ids, attention_mask, token_type_ids)
+
+        h_pred = h_logits > cfg.THRESHOLD
+        t_pred = t_logits > cfg.THRESHOLD
+        span_pred = span_logits > cfg.THRESHOLD
+
+        max_len = input_ids.shape[1]
+        triplets_preds = reconstruct_relations_from_matrices(h_pred, t_pred, span_pred, max_len)
+
+        preds = []
+        for idx, triplets_preds in enumerate(triplets_preds):
+            preds.append(convert_to_string_format(idx, triplets_preds, max_len))
+        
+        return preds
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=cfg.LR, weight_decay=cfg.WEIGHT_DECAY)
