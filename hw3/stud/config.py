@@ -5,7 +5,7 @@ from load import parseRelation2Id, parseRel2Pred
 
 
 
-
+DEBUG = 0
 
 
 # PATHS
@@ -13,19 +13,21 @@ DATA_PATH = 'data'
 TRAIN_PATH = os.path.join(DATA_PATH, 'train.jsonl')
 DEV_PATH = os.path.join(DATA_PATH, 'dev.jsonl')
 TEST_PATH = os.path.join(DATA_PATH, 'test.jsonl')
-RELATION2ID_PATH = os.path.join(DATA_PATH, 'relations2id.json')
-REL2PRED_PATH = os.path.join(DATA_PATH, 'rel2pred.json')
+RELATION2ID_PATH = os.path.join('hw3/', 'relations2id.json')
+REL2PRED_PATH = os.path.join('hw3/', 'rel2pred.json')
 CKPT_PATH = 'UniRel/'
+LOAD_MODEL_PATH = 'model/' + 'UniRel-epoch=05-val_loss=0.0011.ckpt'
 
 
 
 PRETRAINED_MODEL = 'bert-base-cased'
 # MAX_LEN = 180
 BATCH_SIZE = 32
-EPOCHs = 10
+EPOCHS = 10
 THRESHOLD = 0.5
 LR = 3e-5
-
+WEIGHT_DECAY = 0.01
+BIDIRECTIONAL = True
 SEED = 42
 
 

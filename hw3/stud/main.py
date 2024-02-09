@@ -17,7 +17,15 @@ from transformers import BertConfig
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
 
-
+def forge_name():
+    name = ""
+    name += "BI-" if config.BIDIRECTIONAL else "UNI-"
+    name += "BERT-" if config.PRETRAINED_MODEL == "bert-base-cased" else "BARD-"
+    name += f"bs={config.BATCH_SIZE}-"
+    name += f"lr={config.LR}-"
+    name += f"wd={config.WEIGHT_DECAY}-"
+    name += f"TH={config.THRESHOLD}"
+    return name 
 
 if __name__ == '__main__':
     seed_everything(config.SEED)
@@ -54,6 +62,9 @@ if __name__ == '__main__':
         save_top_k=2,
         mode='min',
     )
-    wandb_logger = WandbLogger(name='Run #1', project='UniRel')
-    trainer = Trainer(max_epochs=100, callbacks=checkpoint_callback, logger=wandb_logger, accelerator="gpu", devices=1)
+
+    run_name = forge_name()
+    wandb_logger = WandbLogger(name=run_name, project='UniRel')
+    
+    trainer = Trainer(max_epochs=config.EPOCHS, callbacks=checkpoint_callback, logger=wandb_logger, accelerator="gpu", devices=1)
     trainer.fit(model, train_loader, dev_loader) 

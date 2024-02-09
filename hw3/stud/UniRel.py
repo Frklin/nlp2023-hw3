@@ -4,7 +4,7 @@ import torch.nn as nn
 from transformers import AutoModel, BertPreTrainedModel
 from modify_bert import BertModel
 from metrics import compute_metrics
-from utils import reconstruct_relations_from_matrices
+from utils import reconstruct_relations_from_matrices, convert_to_string_format
 import wandb
 import torch.nn.functional as F
 import config as cfg
@@ -146,6 +146,7 @@ class UniRE(BertPreTrainedModel, pl.LightningModule):
 
         preds = []
         for idx in range(0, len(self.train_h_preds), cfg.BATCH_SIZE):
+            max_len = self.train_h_preds[idx].shape[0]
             selected_train_h_preds = self.train_h_preds[idx:min(len(self.train_h_preds), idx+cfg.BATCH_SIZE)]
             selected_train_t_preds = self.train_t_preds[idx:min(len(self.train_h_preds), idx+cfg.BATCH_SIZE)]
             selected_train_span_preds = self.train_span_preds[idx:min(len(self.train_h_preds), idx+cfg.BATCH_SIZE)]
@@ -158,7 +159,7 @@ class UniRE(BertPreTrainedModel, pl.LightningModule):
             t_preds = torch.stack(selected_train_t_preds)
             span_preds = torch.stack(selected_train_span_preds)
 
-            preds.extend(reconstruct_relations_from_matrices(h_preds, t_preds, span_preds))
+            preds.extend(reconstruct_relations_from_matrices(h_preds, t_preds, span_preds, max_len))
 
             del h_preds, t_preds, span_preds
 
@@ -209,7 +210,7 @@ class UniRE(BertPreTrainedModel, pl.LightningModule):
 
         _, _, _ = self.matrix_precision(self.val_h_CM, "h"), self.matrix_precision(self.val_t_CM, "t"), self.matrix_precision(self.val_span_CM, "span")
 
-        preds = reconstruct_relations_from_matrices(h_preds, t_preds, span_preds, labels=labels)
+        preds = reconstruct_relations_from_matrices(h_preds, t_preds, span_preds, max_len)
 
         acc, prec, rec, f1 = compute_metrics(preds, labels)
 
@@ -233,7 +234,23 @@ class UniRE(BertPreTrainedModel, pl.LightningModule):
         self.val_t_CM = []
         self.val_span_CM = []
 
+    def predict(self, data, max_len):
 
+        indices, input_ids, attention_mask, token_type_ids = data
+
+        h_logits, t_logits, span_logits = self(input_ids, attention_mask, token_type_ids)
+
+        h_pred = h_logits > cfg.THRESHOLD
+        t_pred = t_logits > cfg.THRESHOLD
+        span_pred = span_logits > cfg.THRESHOLD
+
+        triplets_preds = reconstruct_relations_from_matrices(h_pred, t_pred, span_pred, max_len)
+
+        preds = []
+        for idx, triplets_preds in enumerate(triplets_preds):
+            preds.append(convert_to_string_format(idx, triplets_preds, max_len))
+
+        return preds
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=cfg.LR)
     

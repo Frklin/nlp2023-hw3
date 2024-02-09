@@ -36,10 +36,11 @@ class RelationDataset(IterableDataset):
 
     def __iter__(self):
         for idx in range(len(self.tokens)):
-            tokens = ['[CLS]']
-            tokens.extend(self.tokens[idx])
+            # tokens = ['[CLS]']
+            tokens = self.tokens[idx]
+            # tokens.extend(self.tokens[idx])
 
-            input_ids = []
+            input_ids = [self.tokenizer.cls_token_id]
             position_ids = [-1]
             for i in range(len(tokens)):
                 encoded_token = self.tokenizer.encode(tokens[i], add_special_tokens=False)
@@ -111,4 +112,4 @@ def parseRel2Pred(data_path):
 
 def set_position_shift(idx, position_ids):
     if idx not in config.index_shift:
-        config.index_shift["idx"] = position_ids#.append({"idx": idx, "pos_ids": position_ids})
+        config.index_shift[idx] = position_ids#.append({"idx": idx, "pos_ids": position_ids})
