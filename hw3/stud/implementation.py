@@ -7,9 +7,8 @@ from typing import List, Dict
 from transformers import BertTokenizerFast
 from UniRel import UniRE
 from transformers import BertConfig
-from torch.utils.data import DataLoader
 from model import Model
-from load import set_position_shift
+from load import set_position_shift, RelationDataset
 import config
 import torch
 
@@ -67,7 +66,7 @@ class StudentModel(Model):
 
         max_len = max([len(self.tokenizer.encode(" ".join(sentence))) for sentence in tokens])
 
-        indices, input_ids, position_ids, attention_masks, token_type_ids = self.get_input_data(tokens, max_len)       
+        indices, input_ids, attention_masks, token_type_ids = self.get_input_data(tokens, max_len)       
 
         input_data = [indices, input_ids, attention_masks, token_type_ids]
 
@@ -82,6 +81,7 @@ class StudentModel(Model):
         position_ids = []
         attention_masks = []
         token_type_ids = []
+        config.index_shift = {}
 
         for idx, sentence in enumerate(tokens):
             sentence_input_ids = [self.tokenizer.cls_token_id]
@@ -91,7 +91,6 @@ class StudentModel(Model):
                 sentence_input_ids.extend(encoded_token)
                 sentence_position_ids.extend([i] * len(encoded_token))
 
-            set_position_shift(idx, sentence_position_ids)
 
             # PADDING
             sentence_attention_masks = [1] * len(sentence_input_ids) + [0] * (max_len - len(sentence_input_ids)) + [1] * config.REL_NUM
@@ -99,18 +98,19 @@ class StudentModel(Model):
             sentence_input_ids += [0] * (max_len - len(sentence_input_ids)) + self.encoded_preds['input_ids']
             sentence_position_ids += [-1] * (len(sentence_input_ids) - len(sentence_position_ids))
 
+            set_position_shift(idx, sentence_position_ids)
+
+
             indices.append(idx)
             input_ids.append(torch.tensor(sentence_input_ids))
-            position_ids.append(torch.tensor(sentence_position_ids))
             attention_masks.append(torch.tensor(sentence_attention_masks))
             token_type_ids.append(torch.tensor(sentence_token_type_ids))
 
         input_ids = torch.stack(input_ids)
-        position_ids = torch.stack(position_ids)
         attention_masks = torch.stack(attention_masks)
         token_type_ids = torch.stack(token_type_ids)
 
-        return indices, input_ids, position_ids, attention_masks, token_type_ids
+        return indices, input_ids, attention_masks, token_type_ids
 
     def to(self, device: str):
         self.model.to(device)
@@ -125,8 +125,13 @@ if __name__ == "__main__":
     first_sentence_labels = [{"subject": {"start_idx": 4, "end_idx": 6, "entity_type": "PERSON", "text": "Tom Glavine"}, "relation": "/people/person/place_lived", "object": {"start_idx": 8, "end_idx": 9, "entity_type": "LOCATION", "text": "Atlanta"}}]
     second_sentence_labels =[{"subject": {"start_idx": 8, "end_idx": 10, "entity_type": "PERSON", "text": "Roy Blunt"}, "relation": "/people/person/place_lived", "object": {"start_idx": 11, "end_idx": 12, "entity_type": "LOCATION", "text": "Missouri"}}]
 
-    tokens = [first_sentence, second_sentence]
+    tokenizer = BertTokenizerFast.from_pretrained(config.PRETRAINED_MODEL, do_basic_tokenize=True)
+
+    # tokens = [first_sentence, second_sentence]
+    test_data = RelationDataset(config.TEST_PATH, tokenizer)
+
 
     model = build_model("cpu")
 
-    print(model.predict(tokens))
+    for i in range(0, len(test_data.tokens), 16):
+        print(model.predict(test_data.tokens[i:i+16]))

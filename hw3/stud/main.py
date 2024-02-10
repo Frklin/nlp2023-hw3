@@ -57,9 +57,9 @@ if __name__ == '__main__':
     checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
         dirpath=config.CKPT_PATH,
-        filename='UniRel-{epoch:02d}-{val_loss:.4f}',
+        filename='UniRel-{epoch:02d}-{val_loss:.5f}',
         verbose=True,
-        save_top_k=2,
+        save_top_k=3,
         mode='min',
     )
 

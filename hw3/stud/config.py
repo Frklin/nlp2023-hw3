@@ -16,12 +16,12 @@ TEST_PATH = os.path.join(DATA_PATH, 'test.jsonl')
 RELATION2ID_PATH = os.path.join('hw3/', 'relations2id.json')
 REL2PRED_PATH = os.path.join('hw3/', 'rel2pred.json')
 CKPT_PATH = 'UniRel/'
-LOAD_MODEL_PATH = 'model/' + 'UniRel-epoch=05-val_loss=0.0011.ckpt'
+LOAD_MODEL_PATH = 'model/' + 'UniRel-epoch=05-val_loss=0.0011'#'UniRel-epoch=05-val_loss=0.0011.ckpt'
 
 
 
 PRETRAINED_MODEL = 'bert-base-cased'
-# MAX_LEN = 180
+MAX_LEN = 180
 BATCH_SIZE = 32
 EPOCHS = 10
 THRESHOLD = 0.5

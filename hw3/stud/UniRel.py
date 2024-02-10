@@ -247,8 +247,8 @@ class UniRE(BertPreTrainedModel, pl.LightningModule):
         triplets_preds = reconstruct_relations_from_matrices(h_pred, t_pred, span_pred, max_len)
 
         preds = []
-        for idx, triplets_preds in enumerate(triplets_preds):
-            preds.append(convert_to_string_format(idx, triplets_preds, max_len))
+        for idx, pred in zip(indices, triplets_preds):
+            preds.append(convert_to_string_format(idx, pred, max_len))
 
         return preds
     def configure_optimizers(self):

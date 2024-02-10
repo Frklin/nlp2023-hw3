@@ -70,6 +70,8 @@ class RelationDataset(IterableDataset):
     def __len__(self):
         return len(self.tokens)
 
+    def __getitem__(self, idx):
+        return self.tokens[idx]
 
     # def __getitem__(self, idx):
     #     tokens = ['[CLS]']
