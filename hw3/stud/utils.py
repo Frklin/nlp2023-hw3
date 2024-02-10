@@ -157,9 +157,9 @@ def reconstruct_relations_from_matrices(head_matrices, tail_matrices, span_matri
         if head_matrices[k].sum() == 0 or tail_matrices[k].sum() == 0 or span_matrices[k].sum() == 0:
             relations.append([])
             continue
-        tail_ones_coordinates = [(i.item(), j.item()) for i, j in tail_matrices[k].nonzero() if i.item() != 0 and j.item() != 0 and i.item() != j.item() and not(i.item() > max_len and j.item() > max_len)]
-        head_ones_coordinates = [(i.item(), j.item()) for i, j in head_matrices[k].nonzero() if i.item() != 0 and j.item() != 0 and i.item() != j.item() and not(i.item() > max_len and j.item() > max_len)]
-        span_ones_coordinates = [(i.item(), j.item()) for i, j in span_matrices[k].nonzero() if i.item() != 0 and j.item() != 0 and i.item() != j.item() and not(i.item() > max_len and j.item() > max_len)]
+        tail_ones_coordinates = [(i.item(), j.item()) for i, j in tail_matrices[k].nonzero() if i.item() != 0 and j.item() != 0 and i.item() != j.item()]# and not(i.item() > max_len and j.item() > max_len)]
+        head_ones_coordinates = [(i.item(), j.item()) for i, j in head_matrices[k].nonzero() if i.item() != 0 and j.item() != 0 and i.item() != j.item()]# and not(i.item() > max_len and j.item() > max_len)]
+        span_ones_coordinates = [(i.item(), j.item()) for i, j in span_matrices[k].nonzero() if i.item() != 0 and j.item() != 0 and i.item() != j.item()]# and not(i.item() > max_len and j.item() > max_len)]
 
         rel = matrices2relations(head_ones_coordinates, tail_ones_coordinates, span_ones_coordinates, max_len)
 
@@ -182,8 +182,8 @@ def matrices2relations(head, tail, span, max_len):
     # Step 2 & 3: Find s_end and o_end for each triple
     final_relations = []
     for s_start, r, o_start in initial_triples:
-        s_end_candidates = {s_end for s_start_i, s_end in span_set if s_start_i == s_start and s_end < max_len and s_end > s_start}
-        o_end_candidates = {o_end for o_start_i, o_end in span_set if o_start_i == o_start and o_end < max_len and o_end > o_start}
+        s_end_candidates = {s_end for s_start_i, s_end in span_set if s_start_i == s_start}# and s_end < max_len and s_end > s_start}
+        o_end_candidates = {o_end for o_start_i, o_end in span_set if o_start_i == o_start}# and o_end < max_len and o_end > o_start}
          
         # Optional Step 4: Verify existence of (s_end, r, o_end)
         for s_end in s_end_candidates:
@@ -198,8 +198,8 @@ def matrices2relations(head, tail, span, max_len):
     return final_relations
         
 def find_head_spo_triples(head, max_len):
-    s_o_candidates = {(x, y) for x, y in head if x < max_len or y < max_len}
-    r_candidates = {x for x, y in head if x > max_len}
+    s_o_candidates = {(x, y) for x, y in head}# if x < max_len or y < max_len}
+    r_candidates = {x for x, y in head}# if x > max_len}
     
     # Find triples (s, r, o)
     triples = []
