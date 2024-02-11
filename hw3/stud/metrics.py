@@ -17,6 +17,8 @@ def compute_metrics(preds, labels):
     total_preds = 0
     total_golds = 0
 
+    # PREDICTION ACCURACY
+
     for i in range(len(preds)):
         if len(preds[i]) > 0: 
             # print("PREDICTION: ", set(preds[i]))

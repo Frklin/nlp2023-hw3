@@ -16,7 +16,7 @@ TEST_PATH = os.path.join(DATA_PATH, 'test.jsonl')
 RELATION2ID_PATH = os.path.join('hw3/', 'relations2id.json')
 REL2PRED_PATH = os.path.join('hw3/', 'rel2pred.json')
 CKPT_PATH = 'UniRel/'
-LOAD_MODEL_PATH = 'model/' + 'UniRel-epoch=05-val_loss=0.0011'#'UniRel-epoch=05-val_loss=0.0011.ckpt'
+LOAD_MODEL_PATH = 'model/' + 'UniRel-epoch=08-val_loss=0.00112.ckpt'#'UniRel-epoch=05-val_loss=0.0011.ckpt'
 
 
 

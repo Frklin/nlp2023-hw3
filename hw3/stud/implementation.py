@@ -118,7 +118,6 @@ class StudentModel(Model):
 
 
 if __name__ == "__main__":
-    # You can test your function here
     first_sentence = ["In", "baseball", ",", "if", "Tom", "Glavine", "shuts", "out", "Atlanta", "for", "the", "Mets", "on", "Monday", "and", "the", "Braves", "come", "back", "the", "next", "day", "and", "knock", "John", "Maine", "out", "of", "the", "game", "in", "the", "first", "inning", "and", "go", "on", "to", "rout", "the", "Mets", ",", "Glavine", "'s", "shutout", "is", "n't", "wiped", "out", "."]
     second_sentence = ["But", "lawmakers", "in", "those", "districts", ",", "including", "Representative", "Roy", "Blunt", "of", "Missouri", ",", "the", "third-ranking", "Republican", "in", "the", "House", ",", "were", "not", "told", "about", "the", "poll", "and", "were", "caught", "off", "guard", "by", "it", "."]
 
