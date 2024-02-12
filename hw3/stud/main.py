@@ -1,12 +1,10 @@
 import os
-os.environ["TOKENIZERS_PARALLELISM"] = "True"
 import sys
+os.environ["TOKENIZERS_PARALLELISM"] = "True"
 sys.path.append("../")
 
-import numpy as np
-import torch
 from torch.utils.data import DataLoader
-from transformers import BertTokenizer, AutoTokenizer, BertTokenizerFast
+from transformers import BertTokenizerFast
 from pytorch_lightning import Trainer
 
 import config
@@ -18,6 +16,9 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
 
 def forge_name():
+    """
+    Forge the name of the run based on the configuration
+    """
     name = ""
     name += "BI-" if config.BIDIRECTIONAL else "UNI-"
     name += "BERT-" if config.PRETRAINED_MODEL == "bert-base-cased" else "BARD-"
@@ -28,20 +29,25 @@ def forge_name():
     return name 
 
 if __name__ == '__main__':
-    seed_everything(config.SEED)
-    added_token = [f"[unused{i}]" for i in range(1, 17)]
-    tokenizer = BertTokenizerFast.from_pretrained(config.PRETRAINED_MODEL, additional_special_tokens=added_token, do_basic_tokenize=True)
 
+    # set the seed
+    seed_everything(config.SEED)
+
+    # Load the tokenizer
+    tokenizer = BertTokenizerFast.from_pretrained(config.PRETRAINED_MODEL, do_basic_tokenize=True)
+
+    # Load the data
     train_data = RelationDataset(config.TRAIN_PATH, tokenizer)
     dev_data = RelationDataset(config.DEV_PATH, tokenizer)
     test_data = RelationDataset(config.TEST_PATH, tokenizer)
 
+    # Load the data into the dataloader
     train_loader = DataLoader(train_data, batch_size=config.BATCH_SIZE, shuffle=False, collate_fn=collate_fn)
     dev_loader = DataLoader(dev_data, batch_size=config.BATCH_SIZE, shuffle=False, collate_fn=collate_fn)
     test_loader = DataLoader(test_data, batch_size=config.BATCH_SIZE, shuffle=False, collate_fn=collate_fn)
 
     
-
+    # Create the configuration for the model
     bert_config = BertConfig.from_pretrained(config.PRETRAINED_MODEL,
                                             finetuning_task="UniRel")
     bert_config.num_rels = config.REL_NUM
@@ -51,9 +57,11 @@ if __name__ == '__main__':
     config.is_separate_ablation = False
     config.test_data_type = False
 
+    # Load the model
     model = UniRE(config=bert_config) 
     model.resize_token_embeddings(len(tokenizer))
 
+    # Set the checkpoint callback
     checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
         dirpath=config.CKPT_PATH,
@@ -63,8 +71,10 @@ if __name__ == '__main__':
         mode='min',
     )
 
+    # Set the wandb logger
     run_name = forge_name()
     wandb_logger = WandbLogger(name=run_name, project='UniRel')
     
+    # Train the model
     trainer = Trainer(max_epochs=config.EPOCHS, callbacks=checkpoint_callback, logger=wandb_logger, accelerator="gpu", devices=1)
     trainer.fit(model, train_loader, dev_loader) 

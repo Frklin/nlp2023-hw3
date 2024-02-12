@@ -13,8 +13,8 @@ DATA_PATH               = 'data'
 TRAIN_PATH              = os.path.join(DATA_PATH, 'train.jsonl')
 DEV_PATH                = os.path.join(DATA_PATH, 'dev.jsonl')
 TEST_PATH               = os.path.join(DATA_PATH, 'test.jsonl')
-RELATION2ID_PATH        = os.path.join('hw3/', 'relations2id.json')
-REL2PRED_PATH           = os.path.join('hw3/', 'rel2pred.json')
+RELATION2ID_PATH        = os.path.join('hw3/utils', 'relations2id.json')
+REL2PRED_PATH           = os.path.join('hw3/utils', 'rel2pred.json')
 CKPT_PATH               = 'UniRel/'
 LOAD_MODEL_PATH         = 'model/' + 'UniRel-epoch=08-val_loss=0.00112.ckpt'
 
