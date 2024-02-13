@@ -3,7 +3,10 @@ import numpy as np
 
 
 
-def plot_images(head, tail, span):
+def plot_images(head: list, tail: list, span: list):
+    """
+    Plot the head, tail, span matrices and save them
+    """
     max_value = 400
     matrix_size = max_value + 1  
 
@@ -23,16 +26,19 @@ def plot_images(head, tail, span):
     # Combine all the matrices
     combined_matrix = head_matrix + tail_matrix + span_matrix
 
-    plot_and_save_matrix(head_matrix, 'Head Relations', 'data/images/head.png', colorscale='Greens')
-    plot_and_save_matrix(tail_matrix, 'Tail Relations', 'data/images/tail_relations.png', colorscale='Blues')
-    plot_and_save_matrix(span_matrix, 'Span Relations', 'data/images/span_relations.png', colorscale='Purples')
-    plot_and_save_matrix(combined_matrix, 'Combined Relations', 'data/images/combined_relations.png', colorscale='Reds')
+    # Plot and save the matrices
+    plot_and_save_matrix(head_matrix, 'Head Relations', 'hw3/images/head.png', colorscale='Greens')
+    plot_and_save_matrix(tail_matrix, 'Tail Relations', 'hw3/images/tail_relations.png', colorscale='Blues')
+    plot_and_save_matrix(span_matrix, 'Span Relations', 'hw3/images/span_relations.png', colorscale='Purples')
+    plot_and_save_matrix(combined_matrix, 'Combined Relations', 'hw3/images/combined_relations.png', colorscale='Reds')
 
 
 
 
-def plot_and_save_matrix(matrix, title, filename, colorscale='Blues'):
-   
+def plot_and_save_matrix(matrix: np.ndarray, title: str, filename: str, colorscale: str = 'viridis'):
+    """
+    Plot and save the matrix
+    """
 
     plt.figure(figsize=(8, 6))
     plt.imshow(matrix, cmap=colorscale, interpolation='nearest')
@@ -40,4 +46,3 @@ def plot_and_save_matrix(matrix, title, filename, colorscale='Blues'):
     plt.title(title)
     plt.savefig(filename)
     plt.close()
-
